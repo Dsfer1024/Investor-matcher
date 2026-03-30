@@ -16,10 +16,13 @@ settings = get_settings()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("Loading public investor data...")
-    records = await load_public_investors()
-    set_public_investors(records)
-    logger.info(f"Loaded {len(records)} public investors into memory")
+    try:
+        logger.info("Loading public investor data...")
+        records = await load_public_investors()
+        set_public_investors(records)
+        logger.info(f"Loaded {len(records)} public investors into memory")
+    except Exception as e:
+        logger.error(f"Startup data load failed (app will still start): {e}")
     yield
 
 
