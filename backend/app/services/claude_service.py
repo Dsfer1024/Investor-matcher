@@ -227,7 +227,21 @@ Deliver the single JSON array now. Minimum {target} rows."""
                 messages=[{"role": "user", "content": prompt}],
             )
             raw = message.content[0].text
+            logger.info(
+                f"generate_full_investor_list raw response length: {len(raw)} chars, "
+                f"stop_reason: {message.stop_reason}"
+            )
+            if message.stop_reason == "max_tokens":
+                logger.warning(
+                    "Response was truncated (hit max_tokens). "
+                    f"First 300 chars: {raw[:300]!r}"
+                )
             data = _extract_json(raw)
+            if not data:
+                logger.error(
+                    f"JSON extraction returned empty list. "
+                    f"First 500 chars of response: {raw[:500]!r}"
+                )
 
             records: list[InvestorRecord] = []
             seen_ids: set[str] = set()

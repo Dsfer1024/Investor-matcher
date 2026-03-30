@@ -7,7 +7,6 @@ from app.models.request import FindInvestorsRequest
 from app.config import get_settings
 from app.services import claude_service
 from app.services.deduplicator import deduplicate
-from app.cache.investor_cache import get_public_investors
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -25,7 +24,13 @@ async def run_dynamic_pipeline(
     request: FindInvestorsRequest,
     progress_callback: Callable[[str], Awaitable[None]] | None = None,
 ) -> list[InvestorRecord]:
-    """Full dynamic pipeline: conflict research → comprehensive AI list → gap fill → sort."""
+    """
+    Full dynamic pipeline:
+      1. Conflict research
+      2. Comprehensive AI generation (40 investors per call, within 8192-token limit)
+      3. Gap fill with additional calls until min_results_guarantee is met
+      4. Sort and return top 100
+    """
 
     async def _progress(msg: str) -> None:
         if progress_callback:
@@ -36,31 +41,32 @@ async def run_dynamic_pipeline(
     conflict_map = await claude_service.research_competitor_conflicts(request.competitors)
     logger.info(f"Conflict map built for {len(conflict_map)} competitors")
 
-    # Phase 2: Single comprehensive research call
+    # Phase 2: First comprehensive generation call
     await _progress("generate")
     investors = await claude_service.generate_full_investor_list(
         request, conflict_map, target=settings.longlist_target
     )
-    logger.info(f"Full research returned {len(investors)} investors")
+    logger.info(f"First generation call returned {len(investors)} investors")
 
-    # Merge Excel supplement (additive only)
-    excel = get_public_investors()
-    if excel:
-        investors = deduplicate(investors + excel)
-        logger.info(f"After Excel merge + dedup: {len(investors)} unique investors")
-
-    # Phase 3: Gap fill if below minimum
-    if len(investors) < settings.min_results_guarantee:
+    # Phase 3: Gap fill with additional calls until we hit min_results_guarantee
+    # Each call is capped at max_per_call to stay within token limits
+    max_gap_rounds = 5  # prevent infinite loop
+    round_num = 0
+    while len(investors) < settings.min_results_guarantee and round_num < max_gap_rounds:
         await _progress("gap")
+        round_num += 1
         gap = settings.min_results_guarantee - len(investors)
+        call_target = min(gap + 10, settings.max_per_call)
         exclude = {inv.fund_name.lower() for inv in investors}
+        logger.info(f"Gap fill round {round_num}: need {gap} more, requesting {call_target}")
         extra = await claude_service.generate_full_investor_list(
-            request, conflict_map, target=gap + 20, exclude=exclude
+            request, conflict_map, target=call_target, exclude=exclude
         )
-        logger.info(f"Gap fill: generated {len(extra)} additional investors")
-        if extra:
-            investors.extend(extra)
-            logger.info(f"After gap fill: {len(investors)} total investors")
+        if not extra:
+            logger.warning("Gap fill returned 0 investors, stopping")
+            break
+        investors = deduplicate(investors + extra)
+        logger.info(f"After gap fill round {round_num}: {len(investors)} total investors")
 
     # Phase 4: Sort and return top 100
     return sort_by_tier_and_score(investors)[:100]

@@ -9,9 +9,9 @@ class Settings(BaseSettings):
     claude_model: str = "claude-sonnet-4-6"
 
     # Pipeline tuning
-    longlist_target: int = 120          # investors Claude generates per request
+    longlist_target: int = 40           # investors per Claude call (keeps output under 8192 tokens)
     min_results_guarantee: int = 80     # gap-fill threshold
-    scoring_batch_size: int = 10        # investors per enrichment batch
+    max_per_call: int = 40              # hard cap per generate call to avoid token overflow
     max_concurrent_batches: int = 3     # parallel Claude calls
 
     class Config:
