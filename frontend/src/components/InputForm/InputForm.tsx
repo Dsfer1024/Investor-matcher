@@ -118,7 +118,7 @@ export default function InputForm({ onSubmit, loading }: Props) {
             }
           }}
           placeholder="https://yourcompany.com (must include https://)"
-          className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+          className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2d00ff] ${
             errors.companyUrl ? "border-red-400 bg-red-50" : "border-gray-300"
           }`}
         />
@@ -173,7 +173,7 @@ export default function InputForm({ onSubmit, loading }: Props) {
                 set("investorTypes", form.investorTypes.filter((t) => t !== "VC") as InvestorType[]);
               }
             }}
-            className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white ${
+            className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2d00ff] bg-white ${
               errors.roundStage ? "border-red-400 bg-red-50" : "border-gray-300"
             }`}
           >
@@ -217,7 +217,7 @@ export default function InputForm({ onSubmit, loading }: Props) {
             value={form.arr}
             onChange={(e) => set("arr", e.target.value)}
             placeholder="e.g. 2.5"
-            className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+            className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2d00ff] ${
               errors.arr ? "border-red-400 bg-red-50" : "border-gray-300"
             }`}
           />
@@ -234,7 +234,7 @@ export default function InputForm({ onSubmit, loading }: Props) {
             value={form.arrGrowth}
             onChange={(e) => set("arrGrowth", e.target.value)}
             placeholder="e.g. 150"
-            className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+            className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2d00ff] ${
               errors.arrGrowth ? "border-red-400 bg-red-50" : "border-gray-300"
             }`}
           />
@@ -251,7 +251,7 @@ export default function InputForm({ onSubmit, loading }: Props) {
             value={form.raiseAmount}
             onChange={(e) => set("raiseAmount", e.target.value)}
             placeholder="e.g. 10"
-            className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+            className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2d00ff] ${
               errors.raiseAmount ? "border-red-400 bg-red-50" : "border-gray-300"
             }`}
           />
@@ -281,16 +281,17 @@ export default function InputForm({ onSubmit, loading }: Props) {
           onChange={(e) => set("furtherContext", e.target.value)}
           placeholder="Additional details about your business, traction, differentiation, or what you're looking for in an investor..."
           rows={3}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2d00ff] resize-none"
         />
       </div>
 
       <button
         type="submit"
         disabled={loading}
-        className="w-full py-3 px-6 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-semibold rounded-lg transition-colors text-sm"
+        style={{ backgroundColor: loading ? "#0f0087" : "#2d00ff" }}
+        className="w-full py-3 px-6 text-white font-semibold rounded-lg transition-opacity text-sm hover:opacity-90 disabled:opacity-60"
       >
-        {loading ? "Finding investors..." : "Find My Investors"}
+        {loading ? "Finding investors..." : "Find My Investors →"}
       </button>
     </form>
   );

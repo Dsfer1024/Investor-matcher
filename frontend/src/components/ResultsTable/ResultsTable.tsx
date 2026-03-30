@@ -45,41 +45,42 @@ function ScoreBar({ score, color }: { score: number; color: string }) {
 function ExpandedDetail({ inv }: { inv: Investor }) {
   return (
     <tr>
-      <td colSpan={8} className="bg-slate-50 border-b border-slate-200 p-0">
-        <div className="grid grid-cols-3 divide-x divide-slate-200">
-          <div className="px-5 py-4">
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Why Fit</p>
+      <td colSpan={8} style={{ backgroundColor: "rgba(45,0,255,0.06)", borderBottom: "1px solid rgba(45,0,255,0.2)" }} className="p-0">
+        <div className="grid grid-cols-3" style={{ borderTop: "1px solid rgba(45,0,255,0.15)" }}>
+          <div className="px-5 py-4" style={{ borderRight: "1px solid rgba(45,0,255,0.15)" }}>
+            <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: "#2d00ff" }}>Why Fit</p>
             <ul className="space-y-1.5">
               {inv.whyFit.length ? inv.whyFit.map((b, i) => (
-                <li key={i} className="text-sm text-slate-700 flex gap-2">
-                  <span className="text-blue-400 flex-shrink-0">•</span>{b}
+                <li key={i} className="text-sm flex gap-2" style={{ color: "#cacaca" }}>
+                  <span style={{ color: "#2d00ff" }} className="flex-shrink-0">•</span>{b}
                 </li>
-              )) : <li className="text-sm text-slate-400">—</li>}
+              )) : <li className="text-sm" style={{ color: "#666666" }}>—</li>}
             </ul>
           </div>
-          <div className="px-5 py-4">
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Portfolio</p>
+          <div className="px-5 py-4" style={{ borderRight: "1px solid rgba(45,0,255,0.15)" }}>
+            <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: "#2d00ff" }}>Portfolio</p>
             <div className="flex flex-wrap gap-1.5">
               {inv.relevantPastInvestments.length ? inv.relevantPastInvestments.map((c, i) => (
-                <span key={i} className="px-2 py-0.5 bg-white border border-slate-200 rounded text-xs text-slate-600 shadow-sm">{c}</span>
-              )) : <span className="text-sm text-slate-400">—</span>}
+                <span key={i} className="px-2 py-0.5 rounded text-xs" style={{ backgroundColor: "rgba(45,0,255,0.15)", border: "1px solid rgba(45,0,255,0.3)", color: "#cacaca" }}>{c}</span>
+              )) : <span className="text-sm" style={{ color: "#666666" }}>—</span>}
             </div>
           </div>
           <div className="px-5 py-4 space-y-2">
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Details</p>
-            {inv.geoFocus && <p className="text-sm text-slate-600">📍 {inv.geoFocus}</p>}
-            {inv.typicalLeadCheckUsd && <p className="text-sm text-slate-600">💰 {inv.typicalLeadCheckUsd}</p>}
+            <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: "#2d00ff" }}>Details</p>
+            {inv.geoFocus && <p className="text-sm" style={{ color: "#cacaca" }}>📍 {inv.geoFocus}</p>}
+            {inv.typicalLeadCheckUsd && <p className="text-sm" style={{ color: "#cacaca" }}>💰 {inv.typicalLeadCheckUsd}</p>}
             {inv.leadsRoundFrequently && (
               <p className="text-sm">
-                🏆 Leads: <span className={inv.leadsRoundFrequently === "Yes" ? "text-green-600 font-medium" : "text-slate-500"}>{inv.leadsRoundFrequently}</span>
+                🏆 Leads: <span style={{ color: inv.leadsRoundFrequently === "Yes" ? "#4ade80" : "#666666" }} className="font-medium">{inv.leadsRoundFrequently}</span>
               </p>
             )}
-            {inv.notes && <p className="text-xs text-slate-500 italic border-t border-slate-200 pt-2 mt-1">{inv.notes}</p>}
+            {inv.notes && <p className="text-xs italic pt-2 mt-1" style={{ color: "#666666", borderTop: "1px solid rgba(45,0,255,0.15)" }}>{inv.notes}</p>}
             {inv.evidenceLinks.length > 0 && (
-              <div className="flex flex-wrap gap-1 border-t border-slate-200 pt-2">
+              <div className="flex flex-wrap gap-1 pt-2" style={{ borderTop: "1px solid rgba(45,0,255,0.15)" }}>
                 {inv.evidenceLinks.map((url, i) => (
                   <a key={i} href={url} target="_blank" rel="noopener noreferrer"
-                    className="px-2 py-0.5 bg-blue-50 text-blue-600 border border-blue-200 rounded text-xs hover:bg-blue-100 font-mono">
+                    style={{ backgroundColor: "rgba(45,0,255,0.15)", border: "1px solid rgba(45,0,255,0.4)", color: "#2d00ff" }}
+                    className="px-2 py-0.5 rounded text-xs hover:opacity-80 font-mono">
                     [{i + 1}]
                   </a>
                 ))}
@@ -143,54 +144,82 @@ export default function ResultsTable({ investors, quickThesis, companyUrl }: Pro
     <div className="space-y-5">
 
       {/* Header */}
-      <div className="rounded-2xl bg-gradient-to-r from-slate-900 to-slate-700 text-white px-6 py-5">
+      <div
+        style={{ background: "linear-gradient(135deg, #00001b 0%, #0f0087 60%, #2d00ff 100%)" }}
+        className="rounded-2xl text-white px-6 py-5 shadow-2xl"
+      >
         <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-slate-400 text-xs uppercase tracking-widest mb-0.5">Investor Research</p>
-            <h2 className="text-xl font-bold">{companyName(companyUrl)}</h2>
+          <div className="flex items-center gap-3">
+            <img
+              src="https://cdn.prod.website-files.com/6145e9ed201e02bd634fcdf9/614cbc69252818f93d3b2f58_FractalWhite.svg"
+              alt="Fractal"
+              className="h-5 w-auto opacity-80"
+            />
+            <div style={{ width: "1px", height: "24px", backgroundColor: "rgba(255,255,255,0.25)" }} />
+            <div>
+              <p style={{ color: "rgba(255,255,255,0.55)" }} className="text-xs uppercase tracking-widest mb-0.5">Investor Research</p>
+              <h2 className="text-xl font-bold">{companyName(companyUrl)}</h2>
+            </div>
           </div>
-          <button onClick={() => exportToCsv(investors)}
-            className="flex-shrink-0 px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl text-sm font-medium transition-colors">
+          <button
+            onClick={() => exportToCsv(investors)}
+            style={{ borderColor: "rgba(255,255,255,0.25)", backgroundColor: "rgba(255,255,255,0.08)" }}
+            className="flex-shrink-0 px-4 py-2 border rounded-xl text-sm font-medium hover:bg-white/20 transition-colors"
+          >
             ↓ Export CSV
           </button>
         </div>
         <div className="mt-4 flex gap-4 text-sm">
-          <span><span className="font-bold text-white">{investors.length}</span> <span className="text-slate-400">Total</span></span>
-          <span><span className="font-bold text-yellow-400">{tier1}</span> <span className="text-slate-400">Tier 1</span></span>
-          <span><span className="font-bold text-slate-300">{tier2}</span> <span className="text-slate-400">Tier 2</span></span>
-          <span><span className="font-bold text-slate-400">{tier3}</span> <span className="text-slate-500">Tier 3</span></span>
-          {conflicts > 0 && <span><span className="font-bold text-red-400">{conflicts}</span> <span className="text-slate-400">Conflicts</span></span>}
+          <span><span className="font-bold text-white">{investors.length}</span> <span style={{ color: "rgba(255,255,255,0.5)" }}>Total</span></span>
+          <span><span className="font-bold text-yellow-300">{tier1}</span> <span style={{ color: "rgba(255,255,255,0.5)" }}>Tier 1</span></span>
+          <span><span className="font-bold" style={{ color: "rgba(255,255,255,0.75)" }}>{tier2}</span> <span style={{ color: "rgba(255,255,255,0.5)" }}>Tier 2</span></span>
+          <span><span className="font-bold" style={{ color: "rgba(255,255,255,0.45)" }}>{tier3}</span> <span style={{ color: "rgba(255,255,255,0.4)" }}>Tier 3</span></span>
+          {conflicts > 0 && <span><span className="font-bold text-red-300">{conflicts}</span> <span style={{ color: "rgba(255,255,255,0.5)" }}>Conflicts</span></span>}
         </div>
       </div>
 
       {/* Quick Thesis */}
       {quickThesis && (
-        <div className="bg-white border-l-4 border-emerald-500 rounded-xl px-5 py-4 shadow-sm">
-          <p className="text-xs font-semibold text-emerald-600 uppercase tracking-wide mb-1">AI Thesis</p>
-          <p className="text-slate-700 text-sm leading-relaxed">{quickThesis}</p>
+        <div
+          style={{ borderLeftColor: "#2d00ff", backgroundColor: "rgba(45,0,255,0.06)", borderColor: "rgba(45,0,255,0.25)" }}
+          className="border border-l-4 rounded-xl px-5 py-4"
+        >
+          <p style={{ color: "#2d00ff" }} className="text-xs font-semibold uppercase tracking-wide mb-1">AI Thesis</p>
+          <p className="text-white text-sm leading-relaxed">{quickThesis}</p>
         </div>
       )}
 
       {/* Filter bar */}
       <div className="flex gap-2 items-center flex-wrap">
-        <input type="text" placeholder="Search firm or partner..." value={search}
+        <input
+          type="text"
+          placeholder="Search firm or partner..."
+          value={search}
           onChange={e => setSearch(e.target.value)}
-          className="flex-1 min-w-[200px] border border-gray-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+          style={{ backgroundColor: "rgba(255,255,255,0.05)", borderColor: "rgba(45,0,255,0.3)", color: "#ffffff" }}
+          className="flex-1 min-w-[200px] border rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2d00ff] placeholder:text-[#666666]"
+        />
         <div className="flex gap-1.5">
           {([0, 1, 2, 3] as const).map(t => (
-            <button key={t} onClick={() => setTierFilter(t)}
-              className={`px-3 py-2 rounded-xl text-xs font-semibold border transition-colors ${tierFilter === t ? "bg-slate-800 text-white border-slate-800" : "bg-white text-slate-600 border-gray-200 hover:border-slate-400"}`}>
+            <button
+              key={t}
+              onClick={() => setTierFilter(t)}
+              style={tierFilter === t
+                ? { backgroundColor: "#2d00ff", borderColor: "#2d00ff", color: "#ffffff" }
+                : { backgroundColor: "rgba(255,255,255,0.05)", borderColor: "rgba(45,0,255,0.3)", color: "#cacaca" }}
+              className="px-3 py-2 rounded-xl text-xs font-semibold border transition-colors hover:border-[#2d00ff]"
+            >
               {t === 0 ? "All" : `T${t}`}
             </button>
           ))}
         </div>
-        <span className="text-sm text-slate-500">{filtered.length} results</span>
+        <span style={{ color: "#666666" }} className="text-sm">{filtered.length} results</span>
       </div>
 
       {/* Table */}
-      <div className="rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+      <div style={{ borderColor: "rgba(45,0,255,0.25)" }} className="rounded-2xl border overflow-hidden shadow-2xl">
         <table className="w-full text-sm">
-          <thead className="bg-gradient-to-r from-slate-800 to-slate-700">
+          <thead style={{ background: "linear-gradient(90deg, #00001b 0%, #0f0087 100%)" }}>
             <tr>
               <Th col="rank" label="#" />
               <Th col="tier" label="Tier" />
@@ -202,13 +231,14 @@ export default function ResultsTable({ investors, quickThesis, companyUrl }: Pro
               <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wide">Leads?</th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-slate-100">
+          <tbody style={{ backgroundColor: "#00001b" }} className="divide-y divide-[rgba(45,0,255,0.12)]">
             {filtered.map(inv => (
               <>
                 <tr key={inv.id}
                   onClick={() => setExpandedId(expandedId === inv.id ? null : inv.id)}
-                  className={`cursor-pointer transition-colors ${inv.hasCompetitorConflict ? "bg-red-50 hover:bg-red-100 border-l-4 border-l-red-400" : expandedId === inv.id ? "bg-blue-50" : "hover:bg-slate-50"}`}>
-                  <td className="px-4 py-3 text-slate-400 font-mono text-xs">{inv.rank}</td>
+                  style={inv.hasCompetitorConflict ? { backgroundColor: "rgba(220,38,38,0.1)", borderLeft: "4px solid #ef4444" } : expandedId === inv.id ? { backgroundColor: "rgba(45,0,255,0.1)" } : {}}
+                  className={`cursor-pointer transition-colors ${!inv.hasCompetitorConflict && expandedId !== inv.id ? "hover:bg-[rgba(45,0,255,0.06)]" : ""}`}>
+                  <td className="px-4 py-3 font-mono text-xs" style={{ color: "#666666" }}>{inv.rank}</td>
                   <td className="px-4 py-3"><TierBadge tier={inv.tier} /></td>
                   <td className="px-4 py-3"><ScoreBar score={inv.fitScore} color="bg-blue-500" /></td>
                   <td className="px-4 py-3"><ScoreBar score={inv.prestigeScore} color="bg-purple-400" /></td>
@@ -217,8 +247,8 @@ export default function ResultsTable({ investors, quickThesis, companyUrl }: Pro
                       <span className="text-slate-300 text-xs">{expandedId === inv.id ? "▼" : "▶"}</span>
                       <div>
                         {inv.firmUrl
-                          ? <a href={inv.firmUrl} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="font-semibold text-slate-800 hover:text-blue-600 hover:underline">{inv.fundName}</a>
-                          : <span className="font-semibold text-slate-800">{inv.fundName}</span>}
+                          ? <a href={inv.firmUrl} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="font-semibold text-white hover:underline" style={{ color: "#ffffff" }} onMouseOver={e => (e.currentTarget.style.color="#2d00ff")} onMouseOut={e => (e.currentTarget.style.color="#ffffff")}>{inv.fundName}</a>
+                          : <span className="font-semibold text-white">{inv.fundName}</span>}
                         {inv.hasCompetitorConflict && (
                           <p className="text-xs text-red-600 mt-0.5">⚠ {inv.conflictingCompetitors.slice(0, 2).join(", ")}</p>
                         )}
@@ -229,13 +259,13 @@ export default function ResultsTable({ investors, quickThesis, companyUrl }: Pro
                     {inv.recommendedPartner ? (
                       <div>
                         {inv.partnerLinkedIn
-                          ? <a href={inv.partnerLinkedIn} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="text-blue-600 hover:underline text-sm">{inv.recommendedPartner}</a>
-                          : <span className="text-slate-700 text-sm">{inv.recommendedPartner}</span>}
-                        {inv.partnerTitle && <p className="text-xs text-slate-400">{inv.partnerTitle}</p>}
+                          ? <a href={inv.partnerLinkedIn} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="hover:underline text-sm" style={{ color: "#2d00ff" }}>{inv.recommendedPartner}</a>
+                          : <span className="text-sm" style={{ color: "#cacaca" }}>{inv.recommendedPartner}</span>}
+                        {inv.partnerTitle && <p className="text-xs" style={{ color: "#666666" }}>{inv.partnerTitle}</p>}
                       </div>
-                    ) : <span className="text-slate-300 text-xs">—</span>}
+                    ) : <span className="text-xs" style={{ color: "#333366" }}>—</span>}
                   </td>
-                  <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{inv.typicalLeadCheckUsd ?? <span className="text-slate-300">—</span>}</td>
+                  <td className="px-4 py-3 whitespace-nowrap text-sm" style={{ color: "#cacaca" }}>{inv.typicalLeadCheckUsd ?? <span style={{ color: "#333366" }}>—</span>}</td>
                   <td className="px-4 py-3">
                     {inv.leadsRoundFrequently === "Yes"
                       ? <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full font-medium">Yes</span>
