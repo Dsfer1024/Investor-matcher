@@ -1,5 +1,4 @@
 """POST /api/find-investors — SSE streaming endpoint."""
-import asyncio
 import json
 import logging
 from typing import AsyncGenerator
@@ -9,24 +8,17 @@ from fastapi.responses import StreamingResponse
 
 from app.models.request import FindInvestorsRequest
 from app.models.investor import InvestorRecord
-from app.services import scorer
+from app.services import claude_service
+from app.services.scorer import sort_by_tier_and_score
+from app.config import get_settings
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+settings = get_settings()
 
 
 def _sse(payload: dict) -> str:
     return f"data: {json.dumps(payload)}\n\n"
-
-
-def _progress(step_id: str, label: str, status: str) -> str:
-    return _sse({"type": "progress", "step": {"id": step_id, "label": label, "status": status}})
-
-
-STEP_LABELS: dict[str, str] = {
-    "generate": "Generating & scoring investor list with AI...",
-    "rank": "Ranking & tiering results...",
-}
 
 
 def _serialize(inv: InvestorRecord, rank: int) -> dict:
@@ -55,70 +47,48 @@ def _serialize(inv: InvestorRecord, rank: int) -> dict:
 
 
 @router.post("/find-investors")
-async def find_investors(
-    data: str = Form(...),
-):
+async def find_investors(data: str = Form(...)):
     request = FindInvestorsRequest.model_validate_json(data)
 
     async def event_stream() -> AsyncGenerator[str, None]:
-        for step_id, label in STEP_LABELS.items():
-            yield _progress(step_id, label, "pending")
+        # Signal start
+        yield _sse({"type": "progress", "step": {"id": "generate", "label": "Generating investor list with AI...", "status": "active"}})
 
-        progress_queue: asyncio.Queue[str] = asyncio.Queue()
+        all_investors: list[InvestorRecord] = []
+        quick_thesis = ""
+        found_count = 0
 
-        async def on_progress(msg: str) -> None:
-            await progress_queue.put(msg)
+        async for event_type, payload in claude_service.stream_investors(
+            request, target=settings.longlist_target
+        ):
+            if event_type == "thesis":
+                quick_thesis = payload
+                yield _sse({"type": "thesis", "thesis": payload})
 
-        PHASE_STEP = {
-            "generate": "generate",
-            "rank": "rank",
-        }
+            elif event_type == "investor":
+                all_investors.append(payload)
+                found_count += 1
+                # Update loading label with live count
+                yield _sse({
+                    "type": "progress",
+                    "step": {
+                        "id": "generate",
+                        "label": f"Found {found_count} investors so far...",
+                        "status": "active",
+                    },
+                })
 
-        yield _progress("generate", STEP_LABELS["generate"], "active")
-        last_step = "generate"
+            elif event_type == "error":
+                yield _sse({"type": "error", "message": payload})
+                return
 
-        pipeline_task = asyncio.create_task(
-            scorer.run_dynamic_pipeline(request, on_progress)
-        )
+        # Sort and emit final result
+        yield _sse({"type": "progress", "step": {"id": "generate", "label": "Ranking results...", "status": "active"}})
 
-        while not pipeline_task.done():
-            try:
-                msg = await asyncio.wait_for(progress_queue.get(), timeout=1.0)
-                if msg in PHASE_STEP:
-                    new_step = PHASE_STEP[msg]
-                    if new_step != last_step:
-                        yield _progress(last_step, STEP_LABELS[last_step], "complete")
-                        yield _progress(new_step, STEP_LABELS[new_step], "active")
-                        last_step = new_step
-                else:
-                    yield _sse({"type": "info", "message": msg})
-            except asyncio.TimeoutError:
-                continue
+        sorted_investors = sort_by_tier_and_score(all_investors)[:100]
+        output = [_serialize(inv, rank + 1) for rank, inv in enumerate(sorted_investors)]
 
-        while not progress_queue.empty():
-            msg = progress_queue.get_nowait()
-            if msg in PHASE_STEP:
-                new_step = PHASE_STEP[msg]
-                if new_step != last_step:
-                    yield _progress(last_step, STEP_LABELS[last_step], "complete")
-                    yield _progress(new_step, STEP_LABELS[new_step], "active")
-                    last_step = new_step
-
-        exc = pipeline_task.exception()
-        if exc:
-            logger.error(f"Pipeline failed: {exc}")
-            yield _progress(last_step, STEP_LABELS[last_step], "error")
-            yield _sse({"type": "error", "message": str(exc)})
-            return
-
-        result_investors, quick_thesis = pipeline_task.result()
-
-        yield _progress(last_step, STEP_LABELS[last_step], "complete")
-        yield _progress("rank", STEP_LABELS["rank"], "active")
-
-        output = [_serialize(inv, rank + 1) for rank, inv in enumerate(result_investors)]
-
-        yield _progress("rank", f"Found {len(output)} investors", "complete")
+        yield _sse({"type": "progress", "step": {"id": "generate", "label": f"Done — {len(output)} investors ranked", "status": "complete"}})
         yield _sse({"type": "result", "investors": output, "total": len(output), "quickThesis": quick_thesis})
 
     return StreamingResponse(

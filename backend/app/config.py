@@ -8,9 +8,7 @@ class Settings(BaseSettings):
     cache_ttl_hours: int = 24
     claude_model: str = "claude-sonnet-4-6"
 
-    # Pipeline tuning
-    longlist_target: int = 50           # investors per single Claude call
-    max_concurrent_batches: int = 3
+    longlist_target: int = 25           # investors per Claude call (fits in 8k tokens)
 
     class Config:
         env_file = ".env"

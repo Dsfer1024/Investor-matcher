@@ -2,7 +2,6 @@ import type { ProgressStep } from "../../types/investor";
 
 const STEPS: { id: string; label: string }[] = [
   { id: "generate", label: "Generating & scoring investor list with AI..." },
-  { id: "rank", label: "Ranking & tiering results..." },
 ];
 
 interface Props {
@@ -68,7 +67,7 @@ export default function LoadingProgress({ steps }: Props) {
         })}
       </div>
       <p className="text-xs text-gray-400 mt-4">
-        AI research typically takes 20–35 seconds
+        Investors populate as they're found — usually 20–30 seconds total
       </p>
     </div>
   );
