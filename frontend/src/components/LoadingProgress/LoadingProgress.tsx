@@ -66,8 +66,11 @@ export default function LoadingProgress({ steps }: Props) {
           );
         })}
       </div>
-      <p className="text-xs text-gray-400 mt-4">
-        Investors populate as they're found — usually 20–30 seconds total
+      <p className="text-xs text-blue-500 font-medium mt-4">
+        AI will populate up to 50 investors
+      </p>
+      <p className="text-xs text-gray-400 mt-1">
+        Results appear as they're found — usually 30–45 seconds total
       </p>
     </div>
   );
