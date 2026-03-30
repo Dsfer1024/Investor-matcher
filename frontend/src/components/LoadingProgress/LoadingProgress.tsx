@@ -57,7 +57,7 @@ export default function LoadingProgress({ steps }: Props) {
               <span
                 className="text-sm"
                 style={{
-                  color: status === "active" ? "#2d00ff" : status === "complete" ? "#666666" : "#cacaca",
+                  color: status === "active" ? "#ffffff" : status === "complete" ? "#666666" : "#cacaca",
                   fontWeight: status === "active" ? 500 : 400,
                 }}
               >
@@ -69,7 +69,7 @@ export default function LoadingProgress({ steps }: Props) {
       </div>
 
       <div style={{ borderTop: "1px solid rgba(45,0,255,0.2)" }} className="mt-6 pt-4 space-y-1">
-        <p style={{ color: "#2d00ff" }} className="text-xs font-medium">
+        <p style={{ color: "#ffffff" }} className="text-xs font-medium">
           AI will populate up to 50 investors
         </p>
         <p style={{ color: "#666666" }} className="text-xs">
