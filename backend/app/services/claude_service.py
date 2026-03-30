@@ -45,6 +45,20 @@ def _extract_json(text: str) -> list[dict]:
     return []
 
 
+def _extract_thesis_and_json(text: str) -> tuple[str, list[dict]]:
+    """Split response into Quick Thesis paragraph and JSON investor array."""
+    bracket_idx = text.find("[")
+    if bracket_idx == -1:
+        return "", _extract_json(text)
+    thesis_raw = text[:bracket_idx].strip()
+    # Strip header label if Claude included one
+    thesis = re.sub(r"^(QUICK THESIS|Quick Thesis)[:\s*\n]*", "", thesis_raw, flags=re.IGNORECASE).strip()
+    # Clean markdown bold/italic
+    thesis = re.sub(r"\*{1,2}([^*]+)\*{1,2}", r"\1", thesis)
+    data = _extract_json(text[bracket_idx:])
+    return thesis, data
+
+
 def _build_company_profile(request: FindInvestorsRequest) -> str:
     """Build a dynamic company profile string from request inputs."""
     lines = []
@@ -126,7 +140,7 @@ async def generate_full_investor_list(
     conflict_map: dict[str, list[str]],
     target: int = 100,
     exclude: set[str] | None = None,
-) -> list[InvestorRecord]:
+) -> tuple[list[InvestorRecord], str]:
     """
     Single comprehensive Claude call that generates, validates, scores, and tiers
     the full investor list using the structured research prompt.
@@ -204,7 +218,9 @@ ORDERING
 Group by Tier (1→2→3). Within Tier, sort by FitScore desc, then PrestigeScore desc.{exclude_note}
 
 REQUIRED OUTPUT
-Return ONLY a valid JSON array of exactly {target} objects, no markdown fences:
+First write one paragraph labeled "QUICK THESIS:" that summarizes the company, ideal investor profile, key comps, and what makes a perfect lead investor. Keep it to 3–5 sentences.
+
+Then output a valid JSON array of exactly {target} objects, no markdown fences:
 [{{
   "tier": 1,
   "prestige_score": 85,
@@ -240,15 +256,11 @@ Deliver the single JSON array now. Minimum {target} rows."""
             )
             if message.stop_reason == "max_tokens":
                 logger.error(
-                    f"STILL TRUNCATED at max_tokens=16000! "
-                    f"First 500 chars: {raw[:500]!r}"
+                    f"STILL TRUNCATED at max_tokens=16000! First 500: {raw[:500]!r}"
                 )
-            data = _extract_json(raw)
+            quick_thesis, data = _extract_thesis_and_json(raw)
             if not data:
-                logger.error(
-                    f"JSON extraction returned empty list. "
-                    f"First 500 chars of response: {raw[:500]!r}"
-                )
+                logger.error(f"JSON extraction empty. First 500: {raw[:500]!r}")
 
             records: list[InvestorRecord] = []
             seen_ids: set[str] = set()
@@ -294,11 +306,11 @@ Deliver the single JSON array now. Minimum {target} rows."""
                 ))
 
             logger.info(f"Full investor research returned {len(records)} records")
-            return records
+            return records, quick_thesis
 
         except Exception as e:
             logger.error(f"Full investor list generation failed: {e}")
-            return []
+            return [], ""
 
 
 # ─── Progress-wrapped alias for use in pipeline ──────────────────────────────
@@ -312,7 +324,7 @@ async def generate_investors_with_progress(
 ) -> list[InvestorRecord]:
     if progress_callback:
         await progress_callback("generate")
-    result = await generate_full_investor_list(request, conflict_map, target, exclude)
+    result, _ = await generate_full_investor_list(request, conflict_map, target, exclude)
     if progress_callback:
         await progress_callback(f"Generated {len(result)} investors")
     return result

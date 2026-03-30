@@ -115,7 +115,7 @@ async def find_investors(
             yield _sse({"type": "error", "message": str(exc)})
             return
 
-        result_investors: list[InvestorRecord] = pipeline_task.result()
+        result_investors, quick_thesis = pipeline_task.result()
 
         yield _progress(last_step, STEP_LABELS[last_step], "complete")
         yield _progress("rank", STEP_LABELS["rank"], "active")
@@ -123,7 +123,7 @@ async def find_investors(
         output = [_serialize(inv, rank + 1) for rank, inv in enumerate(result_investors)]
 
         yield _progress("rank", f"Found {len(output)} investors", "complete")
-        yield _sse({"type": "result", "investors": output, "total": len(output)})
+        yield _sse({"type": "result", "investors": output, "total": len(output), "quickThesis": quick_thesis})
 
     return StreamingResponse(
         event_stream(),

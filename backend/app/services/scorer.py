@@ -23,13 +23,14 @@ def sort_by_tier_and_score(investors: list[InvestorRecord]) -> list[InvestorReco
 async def run_dynamic_pipeline(
     request: FindInvestorsRequest,
     progress_callback: Callable[[str], Awaitable[None]] | None = None,
-) -> list[InvestorRecord]:
+) -> tuple[list[InvestorRecord], str]:
     """
     Full dynamic pipeline:
       1. Conflict research
-      2. Comprehensive AI generation (40 investors per call, within 8192-token limit)
+      2. Comprehensive AI generation (40 investors per call, within token limits)
       3. Gap fill with additional calls until min_results_guarantee is met
       4. Sort and return top 100
+    Returns (investors, quick_thesis).
     """
 
     async def _progress(msg: str) -> None:
@@ -43,13 +44,12 @@ async def run_dynamic_pipeline(
 
     # Phase 2: First comprehensive generation call
     await _progress("generate")
-    investors = await claude_service.generate_full_investor_list(
+    investors, quick_thesis = await claude_service.generate_full_investor_list(
         request, conflict_map, target=settings.longlist_target
     )
     logger.info(f"First generation call returned {len(investors)} investors")
 
     # Phase 3: Gap fill with additional calls until we hit min_results_guarantee
-    # Each call is capped at max_per_call to stay within token limits
     max_gap_rounds = 5  # prevent infinite loop
     round_num = 0
     while len(investors) < settings.min_results_guarantee and round_num < max_gap_rounds:
@@ -59,7 +59,7 @@ async def run_dynamic_pipeline(
         call_target = min(gap + 10, settings.max_per_call)
         exclude = {inv.fund_name.lower() for inv in investors}
         logger.info(f"Gap fill round {round_num}: need {gap} more, requesting {call_target}")
-        extra = await claude_service.generate_full_investor_list(
+        extra, _ = await claude_service.generate_full_investor_list(
             request, conflict_map, target=call_target, exclude=exclude
         )
         if not extra:
@@ -69,4 +69,4 @@ async def run_dynamic_pipeline(
         logger.info(f"After gap fill round {round_num}: {len(investors)} total investors")
 
     # Phase 4: Sort and return top 100
-    return sort_by_tier_and_score(investors)[:100]
+    return sort_by_tier_and_score(investors)[:100], quick_thesis

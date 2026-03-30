@@ -11,6 +11,8 @@ export default function App() {
   const [state, setState] = useState<AppState>("idle");
   const [progressSteps, setProgressSteps] = useState<ProgressStep[]>([]);
   const [investors, setInvestors] = useState<Investor[]>([]);
+  const [quickThesis, setQuickThesis] = useState("");
+  const [companyUrl, setCompanyUrl] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
 
   function updateProgress(step: ProgressStep) {
@@ -27,13 +29,16 @@ export default function App() {
     setState("loading");
     setProgressSteps([]);
     setInvestors([]);
+    setQuickThesis("");
+    setCompanyUrl(formData.companyUrl);
     setErrorMsg("");
 
     await findInvestors(
       formData,
       updateProgress,
-      (results) => {
+      (results, thesis) => {
         setInvestors(results);
+        setQuickThesis(thesis);
         setState("results");
       },
       (err) => {
@@ -47,6 +52,8 @@ export default function App() {
     setState("idle");
     setProgressSteps([]);
     setInvestors([]);
+    setQuickThesis("");
+    setCompanyUrl("");
     setErrorMsg("");
   }
 
@@ -108,7 +115,7 @@ export default function App() {
         )}
 
         {state === "results" && investors.length > 0 && (
-          <ResultsTable investors={investors} />
+          <ResultsTable investors={investors} quickThesis={quickThesis} companyUrl={companyUrl} />
         )}
 
         {state === "results" && investors.length === 0 && (

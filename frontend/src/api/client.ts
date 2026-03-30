@@ -5,7 +5,7 @@ const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 export async function findInvestors(
   formData: SearchFormData,
   onProgress: (step: ProgressStep) => void,
-  onResult: (investors: Investor[]) => void,
+  onResult: (investors: Investor[], quickThesis: string) => void,
   onError: (error: string) => void
 ): Promise<void> {
   // Send snake_case keys to match Pydantic model field names
@@ -59,7 +59,7 @@ export async function findInvestors(
         if (event.type === "progress") {
           onProgress(event.step as ProgressStep);
         } else if (event.type === "result") {
-          onResult(event.investors as Investor[]);
+          onResult(event.investors as Investor[], (event.quickThesis as string) || "");
         } else if (event.type === "error") {
           onError(event.message as string);
         }
