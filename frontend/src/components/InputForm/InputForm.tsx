@@ -23,6 +23,7 @@ const INITIAL: SearchFormData = {
   icpSegments: [],
   arr: "",
   arrGrowth: "",
+  raiseAmount: "",
   keywords: [],
   roundStage: "",
   furtherContext: "",
@@ -46,6 +47,7 @@ export default function InputForm({ onSubmit, loading }: Props) {
     if (form.icpSegments.length === 0) errs.icpSegments = "Select at least one segment";
     if (!form.arr.trim()) errs.arr = "Required";
     if (!form.arrGrowth.trim()) errs.arrGrowth = "Required";
+    if (!form.raiseAmount.trim()) errs.raiseAmount = "Required";
     if (!form.roundStage) errs.roundStage = "Required";
     if (form.competitors.length === 0) errs.competitors = "Add at least one competitor URL";
     setErrors(errs);
@@ -132,8 +134,8 @@ export default function InputForm({ onSubmit, loading }: Props) {
         </div>
       </div>
 
-      {/* ARR + ARR Growth */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* ARR + ARR Growth + Desired Raise */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             ARR ($M) <span className="text-red-500">*</span>
@@ -167,6 +169,24 @@ export default function InputForm({ onSubmit, loading }: Props) {
             }`}
           />
           {errors.arrGrowth && <p className="text-xs text-red-500 mt-1">{errors.arrGrowth}</p>}
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Desired Amount to Raise ($M) <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="number"
+            min="0"
+            step="0.5"
+            value={form.raiseAmount}
+            onChange={(e) => set("raiseAmount", e.target.value)}
+            placeholder="e.g. 10"
+            className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+              errors.raiseAmount ? "border-red-400" : "border-gray-300"
+            }`}
+          />
+          {errors.raiseAmount && <p className="text-xs text-red-500 mt-1">{errors.raiseAmount}</p>}
+          <p className="text-xs text-gray-400 mt-1">Only shows investors whose check starts at 30%+ of this</p>
         </div>
       </div>
 

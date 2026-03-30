@@ -15,6 +15,7 @@ export async function findInvestors(
     icp_segments: formData.icpSegments,
     arr: formData.arr !== "" ? parseFloat(formData.arr) : null,
     arr_growth: formData.arrGrowth !== "" ? parseFloat(formData.arrGrowth) : null,
+    raise_amount: formData.raiseAmount !== "" ? parseFloat(formData.raiseAmount) : null,
     keywords: formData.keywords,
     round_stage: formData.roundStage,
     further_context: formData.furtherContext,

@@ -38,6 +38,10 @@ def _build_company_profile(request: FindInvestorsRequest) -> str:
         lines.append(f"ARR Growth YoY: {request.arr_growth}%")
     if request.round_stage:
         lines.append(f"Round Stage: {request.round_stage}")
+    if request.raise_amount is not None:
+        min_check = round(request.raise_amount * 0.30, 2)
+        lines.append(f"Desired Raise: ${request.raise_amount}M")
+        lines.append(f"Minimum Investor Check Size: ${min_check}M (30% of raise)")
     if request.competitors:
         lines.append(f"Competitor URLs: {', '.join(request.competitors)}")
     if request.further_context:
@@ -100,6 +104,21 @@ def _build_prompt(profile: str, target: int) -> str:
         "Not specified",
     )
 
+    # Build check-size filter line if raise_amount was provided
+    min_check = None
+    for line in profile.splitlines():
+        if line.startswith("Minimum Investor Check Size:"):
+            try:
+                min_check = float(line.split("$")[1].split("M")[0])
+            except Exception:
+                pass
+    check_size_rule = (
+        f"• Minimum check size: ${min_check}M — only include investors whose typical lead check "
+        f"starts at ${min_check}M or above (30% of the desired raise)"
+        if min_check is not None
+        else ""
+    )
+
     return f"""You are a meticulous venture research analyst. Create an ACCURATE, citation-backed list of {target} investor VC firms for the company below.
 
 ABOUT THE COMPANY
@@ -112,6 +131,7 @@ TARGET INVESTOR PROFILE
 • Keywords / Themes: {keywords_str}
 • ICP / Buyer: {icp_str} customer segments
 • Geography: Prioritize North America
+{check_size_rule}
 
 SCORING & TIERS
 PrestigeScore (0–100): Outcomes/Brand (30pts) + Lead Velocity (25pts) + Platform Strength (15pts) + Cross-Cycle Conviction (15pts) + Peer Signaling (15pts)

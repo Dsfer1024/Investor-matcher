@@ -51,6 +51,7 @@ export type RoundStage = (typeof ROUND_STAGES)[number];
 
 export const INDUSTRIES = [
   "Construction Tech",
+  "Field Services",
   "Legal Tech",
   "Logistics & Supply Chain",
   "Real Estate Tech",
@@ -79,6 +80,7 @@ export interface SearchFormData {
   icpSegments: IcpSegment[];
   arr: string;
   arrGrowth: string;
+  raiseAmount: string;
   keywords: Keyword[];
   roundStage: RoundStage | "";
   furtherContext: string;
