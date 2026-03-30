@@ -1,42 +1,43 @@
 export interface Investor {
   id: string;
   rank: number;
-  // Scores & tier
   tier: 1 | 2 | 3;
   prestigeScore: number;
   fitScore: number;
-  // Fund identity
   fundName: string;
   firmUrl: string | null;
   recommendedPartner: string | null;
   partnerTitle: string | null;
   partnerLinkedIn: string | null;
-  // Investment parameters
   geoFocus: string | null;
   typicalLeadCheckUsd: string | null;
   leadsRoundFrequently: string | null;
-  // Narrative
   whyFit: string[];
   relevantPastInvestments: string[];
   evidenceLinks: string[];
-  // Conflict
   hasCompetitorConflict: boolean;
   conflictingCompetitors: string[];
-  // Meta
   notes: string | null;
   source: string;
 }
 
-export const BUSINESS_TYPES = [
+export const KEYWORDS = [
   "B2B SaaS",
   "Vertical SaaS",
   "Vertical AI",
   "Vertical Fintech",
   "Fintech",
   "Healthcare IT",
+  "Marketplace",
+  "Developer Tools",
+  "Infrastructure",
+  "Consumer",
 ] as const;
 
-export type BusinessType = (typeof BUSINESS_TYPES)[number];
+export type Keyword = (typeof KEYWORDS)[number];
+
+export const ICP_SEGMENTS = ["SMB", "Mid-market", "Enterprise"] as const;
+export type IcpSegment = (typeof ICP_SEGMENTS)[number];
 
 export const ROUND_STAGES = [
   "Pre-Seed",
@@ -51,14 +52,13 @@ export type RoundStage = (typeof ROUND_STAGES)[number];
 export interface SearchFormData {
   companyUrl: string;
   broadIndustry: string;
-  targetCustomer: string;
+  icpSegments: IcpSegment[];
   arr: string;
   arrGrowth: string;
-  businessTypes: BusinessType[];
+  keywords: Keyword[];
   roundStage: RoundStage | "";
   furtherContext: string;
   competitors: string[];
-  spreadsheetFile: File | null;
 }
 
 export interface ProgressStep {

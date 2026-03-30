@@ -1,7 +1,15 @@
 import { useState, FormEvent } from "react";
 import MultiTagInput from "./MultiTagInput";
-import FileUpload from "./FileUpload";
-import { BUSINESS_TYPES, ROUND_STAGES, type SearchFormData, type BusinessType, type RoundStage } from "../../types/investor";
+import MultiSelectDropdown from "./MultiSelectDropdown";
+import {
+  KEYWORDS,
+  ICP_SEGMENTS,
+  ROUND_STAGES,
+  type SearchFormData,
+  type Keyword,
+  type IcpSegment,
+  type RoundStage,
+} from "../../types/investor";
 
 interface Props {
   onSubmit: (data: SearchFormData) => void;
@@ -11,14 +19,13 @@ interface Props {
 const INITIAL: SearchFormData = {
   companyUrl: "",
   broadIndustry: "",
-  targetCustomer: "",
+  icpSegments: [],
   arr: "",
   arrGrowth: "",
-  businessTypes: [],
+  keywords: [],
   roundStage: "",
   furtherContext: "",
   competitors: [],
-  spreadsheetFile: null,
 };
 
 export default function InputForm({ onSubmit, loading }: Props) {
@@ -30,20 +37,13 @@ export default function InputForm({ onSubmit, loading }: Props) {
     setErrors((e) => ({ ...e, [key]: undefined }));
   }
 
-  function toggleBusinessType(type: BusinessType) {
-    set(
-      "businessTypes",
-      form.businessTypes.includes(type)
-        ? form.businessTypes.filter((t) => t !== type)
-        : [...form.businessTypes, type]
-    );
-  }
-
   function validate(): boolean {
     const errs: typeof errors = {};
     if (!form.companyUrl.trim()) errs.companyUrl = "Company URL is required";
     if (!form.roundStage) errs.roundStage = "Round stage is required";
-    if (form.businessTypes.length === 0) errs.businessTypes = "Select at least one business type";
+    if (form.keywords.length === 0) errs.keywords = "Select at least one keyword";
+    if (!form.arr.trim()) errs.arr = "ARR is required";
+    if (!form.arrGrowth.trim()) errs.arrGrowth = "ARR Growth % is required";
     setErrors(errs);
     return Object.keys(errs).length === 0;
   }
@@ -54,8 +54,9 @@ export default function InputForm({ onSubmit, loading }: Props) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Row 1: URL + Industry */}
+    <form onSubmit={handleSubmit} className="space-y-5">
+
+      {/* Row 1: Company URL + Broad Industry */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -84,24 +85,32 @@ export default function InputForm({ onSubmit, loading }: Props) {
         </div>
       </div>
 
-      {/* Target Customer */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Target Customer / ICP
-        </label>
-        <textarea
-          value={form.targetCustomer}
-          onChange={(e) => set("targetCustomer", e.target.value)}
-          placeholder="Describe your ideal customer in detail (e.g. mid-market law firms with 50-500 attorneys in North America, currently using legacy document management software)"
-          rows={3}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+      {/* Row 2: Keywords + ICP */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <MultiSelectDropdown
+          label="Keywords"
+          options={KEYWORDS}
+          selected={form.keywords}
+          onChange={(v) => set("keywords", v as Keyword[])}
+          placeholder="Select business type keywords..."
+          required
+          error={errors.keywords}
+        />
+        <MultiSelectDropdown
+          label="ICP / Target Customer"
+          options={ICP_SEGMENTS}
+          selected={form.icpSegments}
+          onChange={(v) => set("icpSegments", v as IcpSegment[])}
+          placeholder="Select customer segment(s)..."
         />
       </div>
 
-      {/* Row 2: ARR + Growth + Stage */}
+      {/* Row 3: ARR + ARR Growth + Stage */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">ARR ($M)</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            ARR ($M) <span className="text-red-500">*</span>
+          </label>
           <input
             type="number"
             min="0"
@@ -109,11 +118,16 @@ export default function InputForm({ onSubmit, loading }: Props) {
             value={form.arr}
             onChange={(e) => set("arr", e.target.value)}
             placeholder="e.g. 2.5"
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+              errors.arr ? "border-red-400" : "border-gray-300"
+            }`}
           />
+          {errors.arr && <p className="text-xs text-red-500 mt-1">{errors.arr}</p>}
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">ARR Growth YoY (%)</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            ARR Growth YoY (%) <span className="text-red-500">*</span>
+          </label>
           <input
             type="number"
             min="0"
@@ -121,8 +135,11 @@ export default function InputForm({ onSubmit, loading }: Props) {
             value={form.arrGrowth}
             onChange={(e) => set("arrGrowth", e.target.value)}
             placeholder="e.g. 150"
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+              errors.arrGrowth ? "border-red-400" : "border-gray-300"
+            }`}
           />
+          {errors.arrGrowth && <p className="text-xs text-red-500 mt-1">{errors.arrGrowth}</p>}
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -144,32 +161,13 @@ export default function InputForm({ onSubmit, loading }: Props) {
         </div>
       </div>
 
-      {/* Business Types */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Business Type <span className="text-red-500">*</span>{" "}
-          <span className="font-normal text-gray-400">(select all that apply)</span>
-        </label>
-        <div className="flex flex-wrap gap-2">
-          {BUSINESS_TYPES.map((type) => (
-            <button
-              key={type}
-              type="button"
-              onClick={() => toggleBusinessType(type)}
-              className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
-                form.businessTypes.includes(type)
-                  ? "bg-blue-600 text-white border-blue-600"
-                  : "bg-white text-gray-700 border-gray-300 hover:border-blue-400"
-              }`}
-            >
-              {type}
-            </button>
-          ))}
-        </div>
-        {errors.businessTypes && (
-          <p className="text-xs text-red-500 mt-1">{errors.businessTypes}</p>
-        )}
-      </div>
+      {/* Competitors */}
+      <MultiTagInput
+        label="Competitor URLs"
+        placeholder="Paste a competitor URL and press Enter. Add as many as relevant."
+        values={form.competitors}
+        onChange={(v) => set("competitors", v)}
+      />
 
       {/* Further Context */}
       <div>
@@ -178,28 +176,9 @@ export default function InputForm({ onSubmit, loading }: Props) {
           value={form.furtherContext}
           onChange={(e) => set("furtherContext", e.target.value)}
           placeholder="Additional details about your business, traction, differentiation, or what you're looking for in an investor..."
-          rows={4}
+          rows={3}
           className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
         />
-      </div>
-
-      {/* Competitors */}
-      <MultiTagInput
-        label="Competitors"
-        placeholder="Type a competitor name and press Enter..."
-        values={form.competitors}
-        onChange={(v) => set("competitors", v)}
-      />
-
-      {/* File Upload */}
-      <div>
-        <FileUpload
-          file={form.spreadsheetFile}
-          onChange={(f) => set("spreadsheetFile", f)}
-        />
-        <p className="text-xs text-gray-400 mt-1.5">
-          AI generates investors automatically. Your spreadsheet adds extra candidates.
-        </p>
       </div>
 
       {/* Submit */}

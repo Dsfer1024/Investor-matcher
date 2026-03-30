@@ -4,12 +4,12 @@ import json
 import logging
 from typing import AsyncGenerator
 
-from fastapi import APIRouter, File, Form, UploadFile
+from fastapi import APIRouter, Form
 from fastapi.responses import StreamingResponse
 
 from app.models.request import FindInvestorsRequest
 from app.models.investor import InvestorRecord
-from app.services import scorer, spreadsheet_parser
+from app.services import scorer
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -26,7 +26,7 @@ def _progress(step_id: str, label: str, status: str) -> str:
 STEP_LABELS: dict[str, str] = {
     "conflicts": "Researching competitor conflicts...",
     "generate": "Generating & scoring investor list with AI...",
-    "gap": "Gap fill: generating more investors to hit 80+ results...",
+    "gap": "Filling gaps to ensure 80+ results...",
     "rank": "Ranking & tiering results...",
 }
 
@@ -35,28 +35,22 @@ def _serialize(inv: InvestorRecord, rank: int) -> dict:
     return {
         "id": inv.id,
         "rank": rank,
-        # Scores & tier
         "tier": inv.tier or 3,
         "prestigeScore": inv.prestige_score or 0,
         "fitScore": inv.fit_score or 0,
-        # Fund identity
         "fundName": inv.fund_name,
         "firmUrl": inv.website,
         "recommendedPartner": inv.target_partner,
         "partnerTitle": inv.partner_title,
         "partnerLinkedIn": inv.linkedin_url,
-        # Investment parameters
         "geoFocus": inv.geography,
         "typicalLeadCheckUsd": inv.check_size_raw,
         "leadsRoundFrequently": inv.leads_round_frequently,
-        # Narrative
         "whyFit": inv.why_fit,
         "relevantPastInvestments": inv.relevant_past_investments,
         "evidenceLinks": inv.evidence_links,
-        # Conflict
         "hasCompetitorConflict": inv.has_competitor_conflict,
         "conflictingCompetitors": inv.conflicting_competitors,
-        # Meta
         "notes": inv.notes,
         "source": inv.source,
     }
@@ -65,22 +59,10 @@ def _serialize(inv: InvestorRecord, rank: int) -> dict:
 @router.post("/find-investors")
 async def find_investors(
     data: str = Form(...),
-    file: UploadFile | None = File(None),
 ):
     request = FindInvestorsRequest.model_validate_json(data)
 
-    # Parse uploaded spreadsheet before streaming
-    upload_investors: list[InvestorRecord] = []
-    if file and file.filename:
-        try:
-            content = await file.read()
-            upload_investors = spreadsheet_parser.parse_spreadsheet(content, file.filename)
-            logger.info(f"Parsed {len(upload_investors)} investors from uploaded spreadsheet")
-        except Exception as e:
-            logger.error(f"Spreadsheet parse error: {e}")
-
     async def event_stream() -> AsyncGenerator[str, None]:
-        # Emit all steps as pending initially
         for step_id, label in STEP_LABELS.items():
             yield _progress(step_id, label, "pending")
 
@@ -103,8 +85,6 @@ async def find_investors(
             scorer.run_dynamic_pipeline(request, on_progress)
         )
 
-        result_investors: list[InvestorRecord] = []
-
         while not pipeline_task.done():
             try:
                 msg = await asyncio.wait_for(progress_queue.get(), timeout=1.0)
@@ -119,7 +99,6 @@ async def find_investors(
             except asyncio.TimeoutError:
                 continue
 
-        # Drain remaining queue
         while not progress_queue.empty():
             msg = progress_queue.get_nowait()
             if msg in PHASE_STEP:
@@ -136,13 +115,7 @@ async def find_investors(
             yield _sse({"type": "error", "message": str(exc)})
             return
 
-        result_investors = pipeline_task.result()
-
-        # Merge uploaded spreadsheet investors if present
-        if upload_investors:
-            from app.services.deduplicator import deduplicate as _dedup
-            combined = _dedup(result_investors + upload_investors)
-            result_investors = scorer.sort_by_tier_and_score(combined)[:100]
+        result_investors: list[InvestorRecord] = pipeline_task.result()
 
         yield _progress(last_step, STEP_LABELS[last_step], "complete")
         yield _progress("rank", STEP_LABELS["rank"], "active")

@@ -52,16 +52,18 @@ def _build_company_profile(request: FindInvestorsRequest) -> str:
         lines.append(f"Company URL: {request.company_url}")
     if request.broad_industry:
         lines.append(f"Industry / Category: {request.broad_industry}")
-    if request.business_types:
-        lines.append(f"Business Type(s) / Keywords: {', '.join(request.business_types)}")
-    if request.target_customer:
-        lines.append(f"ICP / Buyer: {request.target_customer}")
+    if request.keywords:
+        lines.append(f"Business Type(s) / Keywords: {', '.join(request.keywords)}")
+    if request.icp_segments:
+        lines.append(f"ICP / Target Segments: {', '.join(request.icp_segments)}")
     if request.arr is not None:
         lines.append(f"ARR: ${request.arr}M")
     if request.arr_growth is not None:
         lines.append(f"ARR Growth YoY: {request.arr_growth}%")
     if request.round_stage:
         lines.append(f"Round Stage: {request.round_stage}")
+    if request.competitors:
+        lines.append(f"Competitor URLs: {', '.join(request.competitors)}")
     if request.further_context:
         lines.append(f"Additional Context: {request.further_context}")
     return "\n".join(lines)
@@ -151,9 +153,13 @@ async def generate_full_investor_list(
             else "None provided"
         )
         round_stage = request.round_stage or "Seed / Pre-Series A"
-        business_types_str = (
-            ", ".join(request.business_types) if request.business_types
+        keywords_str = (
+            ", ".join(request.keywords) if request.keywords
             else "Vertical SaaS / AI"
+        )
+        icp_str = (
+            ", ".join(request.icp_segments) if request.icp_segments
+            else "Not specified"
         )
 
         exclude_note = ""
@@ -174,12 +180,13 @@ ABOUT THE COMPANY
 
 TARGET INVESTOR PROFILE
 • Stage: {round_stage}
-• Themes: Backers with relevant theses for {business_types_str}, application software
+• Keywords / Themes: {keywords_str}
+• ICP / Buyer: {icp_str} customer segments
 • Geography: Prioritize North America
 • Conflict Flags: Flag firms with active board seats in direct competitors — highlight but include
 
 HOW TO FIND CANDIDATES
-1) Backtrace from the competitors listed; identify who led or followed into similar rounds
+1) Backtrace from the competitor URLs listed; identify who led or followed into similar rounds
 2) Use primary sources (firm sites, press, partner bios) and your training data
 3) Confirm LEAD vs participant; capture board seats
 4) Use last 5–7 years to evidence lead behavior{conflict_note}

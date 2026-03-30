@@ -8,20 +8,21 @@ export async function findInvestors(
   onResult: (investors: Investor[]) => void,
   onError: (error: string) => void
 ): Promise<void> {
-  const { spreadsheetFile, ...rest } = formData;
-
-  // Convert empty numeric strings to null so pydantic doesn't fail
+  // Send snake_case keys to match Pydantic model field names
   const payload = {
-    ...rest,
-    arr: rest.arr !== "" ? parseFloat(rest.arr) : null,
-    arrGrowth: rest.arrGrowth !== "" ? parseFloat(rest.arrGrowth) : null,
+    company_url: formData.companyUrl,
+    broad_industry: formData.broadIndustry,
+    icp_segments: formData.icpSegments,
+    arr: formData.arr !== "" ? parseFloat(formData.arr) : null,
+    arr_growth: formData.arrGrowth !== "" ? parseFloat(formData.arrGrowth) : null,
+    keywords: formData.keywords,
+    round_stage: formData.roundStage,
+    further_context: formData.furtherContext,
+    competitors: formData.competitors,
   };
 
   const body = new FormData();
   body.append("data", JSON.stringify(payload));
-  if (spreadsheetFile) {
-    body.append("file", spreadsheetFile);
-  }
 
   let response: Response;
   try {
