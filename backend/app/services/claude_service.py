@@ -26,29 +26,6 @@ def _slugify(text: str) -> str:
     return re.sub(r"[^a-z0-9]+", "_", text.lower()).strip("_")
 
 
-def _build_company_profile(request: FindInvestorsRequest) -> str:
-    lines = []
-    if request.company_url:
-        lines.append(f"Company URL: {request.company_url}")
-    if request.broad_industry:
-        lines.append(f"Industry: {request.broad_industry}")
-    if request.target_customer:
-        lines.append(f"Target Customer / ICP: {request.target_customer}")
-    if request.arr is not None:
-        lines.append(f"ARR: ${request.arr}M")
-    if request.arr_growth is not None:
-        lines.append(f"ARR Growth YoY: {request.arr_growth}%")
-    if request.business_types:
-        lines.append(f"Business Type(s): {', '.join(request.business_types)}")
-    if request.round_stage:
-        lines.append(f"Round Stage: {request.round_stage}")
-    if request.competitors:
-        lines.append(f"Competitors: {', '.join(request.competitors)}")
-    if request.further_context:
-        lines.append(f"Additional Context: {request.further_context}")
-    return "\n".join(lines)
-
-
 def _extract_json(text: str) -> list[dict]:
     """Extract JSON array from Claude response, tolerating markdown fences."""
     text = text.strip()
@@ -66,6 +43,28 @@ def _extract_json(text: str) -> list[dict]:
             except json.JSONDecodeError:
                 pass
     return []
+
+
+def _build_company_profile(request: FindInvestorsRequest) -> str:
+    """Build a dynamic company profile string from request inputs."""
+    lines = []
+    if request.company_url:
+        lines.append(f"Company URL: {request.company_url}")
+    if request.broad_industry:
+        lines.append(f"Industry / Category: {request.broad_industry}")
+    if request.business_types:
+        lines.append(f"Business Type(s) / Keywords: {', '.join(request.business_types)}")
+    if request.target_customer:
+        lines.append(f"ICP / Buyer: {request.target_customer}")
+    if request.arr is not None:
+        lines.append(f"ARR: ${request.arr}M")
+    if request.arr_growth is not None:
+        lines.append(f"ARR Growth YoY: {request.arr_growth}%")
+    if request.round_stage:
+        lines.append(f"Round Stage: {request.round_stage}")
+    if request.further_context:
+        lines.append(f"Additional Context: {request.further_context}")
+    return "\n".join(lines)
 
 
 # ─── Phase 1: Competitor Conflict Research ──────────────────────────────────
@@ -118,59 +117,108 @@ One object per company listed above."""
             return {}
 
 
-# ─── Phase 2: Investor Longlist Generation ──────────────────────────────────
+# ─── Phase 2: Full Investor Research (single comprehensive call) ─────────────
 
-async def generate_investor_longlist(
+async def generate_full_investor_list(
     request: FindInvestorsRequest,
     conflict_map: dict[str, list[str]],
-    target: int = 120,
+    target: int = 100,
     exclude: set[str] | None = None,
 ) -> list[InvestorRecord]:
-    """Ask Claude to generate a longlist of investors for this company profile."""
+    """
+    Single comprehensive Claude call that generates, validates, scores, and tiers
+    the full investor list using the structured research prompt.
+    """
     async with _semaphore:
         await rate_limiter.acquire()
         client = _get_client()
 
         company_profile = _build_company_profile(request)
+
+        # Build conflict section
+        conflict_firms: list[str] = []
+        for investors in conflict_map.values():
+            conflict_firms.extend(investors)
+        conflict_note = ""
+        if conflict_firms:
+            conflict_note = (
+                f"Funds with known investments in competitors "
+                f"(flag, do NOT exclude): {', '.join(set(conflict_firms)[:30])}"
+            )
+
+        competitors_str = (
+            ", ".join(request.competitors) if request.competitors
+            else "None provided"
+        )
+        round_stage = request.round_stage or "Seed / Pre-Series A"
+        business_types_str = (
+            ", ".join(request.business_types) if request.business_types
+            else "Vertical SaaS / AI"
+        )
+
         exclude_note = ""
         if exclude:
-            sample = list(exclude)[:20]
-            exclude_note = f"\n\nDo NOT include these funds (already found): {', '.join(sample)}"
+            sample = list(exclude)[:25]
+            exclude_note = f"\n\nDo NOT repeat these firms (already in list): {', '.join(sample)}"
 
-        conflict_funds = set()
-        for investors in conflict_map.values():
-            conflict_funds.update(i.lower() for i in investors)
-        conflict_note = ""
-        if conflict_funds:
-            conflict_note = f"\n\nEXCLUDE these funds (invested in competitors): {', '.join(list(conflict_funds)[:20])}"
+        prompt = f"""You are a meticulous venture research analyst. Your task is to create an ACCURATE, citation-backed list of {target} potential investor VC firms for the company described below.
 
-        prompt = f"""You are a meticulous venture research analyst. Generate a longlist of exactly {target} VC and PE firms that would be ideal investors for this company.
+Identify the best partner at each firm, explain why they're a fit, and include relevant past investments. Output must be clean, deduped, and ready for CSV.
 
-## Company Profile
+---
+
+ABOUT THE COMPANY
 {company_profile}
+• Geo preference: North America (prioritize USA)
+• Conflicts to avoid (flag, do not exclude): Funds with active board seats or publicly-disclosed investments in: {competitors_str}
 
-## Requirements
-- Match the round stage: include funds that actively invest at this stage with appropriate check sizes
-- Prioritize North America geography
-- Include a mix of: top-tier brand-name VCs, specialist vertical/sector funds, and emerging managers with relevant thesis
-- Exclude: angels, family offices, pure CVCs (unless proven stage leaders), growth-only funds investing too late
-- Include both lead investors and strong follow-on investors
-- Aim for diversity: different fund sizes, geographies within NA, investment styles{exclude_note}{conflict_note}
+TARGET INVESTOR PROFILE
+• Stage: {round_stage}
+• Themes: Backers with relevant theses for {business_types_str}, application software
+• Geography: Prioritize North America
+• Conflict Flags: Flag firms with active board seats in direct competitors — highlight but include
 
-Return ONLY a valid JSON array of exactly {target} objects, no markdown:
+HOW TO FIND CANDIDATES
+1) Backtrace from the competitors listed; identify who led or followed into similar rounds
+2) Use primary sources (firm sites, press, partner bios) and your training data
+3) Confirm LEAD vs participant; capture board seats
+4) Use last 5–7 years to evidence lead behavior{conflict_note}
+
+DATA QUALITY (no hallucinations)
+• Each row: 2–3 evidence links from credible sources. If not verifiable, use "https://needs-verification.com" as placeholder
+• Confirm lead behavior from training data before marking "Yes" on LeadsRoundFrequently
+
+SCORING & TIERS
+PrestigeScore (0–100): Outcomes/Brand (30pts) + Lead Velocity (25pts) + Platform Strength (15pts) + Cross-Cycle Conviction (15pts) + Peer Signaling (15pts)
+FitScore (0–100): Sector Relevance (35pts) + Thesis Fit (35pts) + Geo/Stage Match (15pts) + Conflict Risk (15pts — penalize active competitor boards)
+• Tier 1 = PrestigeScore 80–100 | Tier 2 = 60–79 | Tier 3 = 40–59
+
+ORDERING
+Group by Tier (1→2→3). Within Tier, sort by FitScore desc, then PrestigeScore desc.{exclude_note}
+
+REQUIRED OUTPUT
+Return ONLY a valid JSON array of exactly {target} objects, no markdown fences:
 [{{
-  "id": "slugified_fund_name",
-  "fund_name": "Exact Fund Name",
-  "target_partner": "Best Partner Name",
-  "check_size_raw": "$Xm-$Ym",
-  "fund_size_raw": "$XM",
-  "areas_of_focus": ["tag1", "tag2"],
-  "stages_invested": ["Stage A", "Stage B"],
-  "portfolio_companies": ["Co1", "Co2", "Co3"],
-  "website": "https://...",
-  "geography": "USA / North America",
-  "lead_or_follow": "Lead"
-}}]"""
+  "tier": 1,
+  "prestige_score": 85,
+  "fit_score": 90,
+  "firm": "Exact Fund Name",
+  "recommended_partner": "Best Partner Name",
+  "partner_title": "General Partner",
+  "firm_url": "https://...",
+  "partner_linkedin": "https://linkedin.com/in/...",
+  "geo_focus": "USA / North America",
+  "typical_lead_check_usd": "$2M–$5M",
+  "leads_round_frequently": "Yes",
+  "why_fit": ["Specific reason 1", "Specific reason 2", "Specific reason 3"],
+  "relevant_past_investments": ["Company Name (Series A, 2022)", "Company2 (Seed, 2021)"],
+  "evidence_links": ["https://...", "https://..."],
+  "has_competitor_conflict": false,
+  "conflicting_competitors": [],
+  "notes": "One sentence additional context or flag"
+}}]
+
+Deliver the single JSON array now. Minimum {target} rows."""
 
         try:
             message = await client.messages.create(
@@ -180,212 +228,70 @@ Return ONLY a valid JSON array of exactly {target} objects, no markdown:
             )
             raw = message.content[0].text
             data = _extract_json(raw)
+
             records: list[InvestorRecord] = []
             seen_ids: set[str] = set()
+
             for item in data:
                 if not isinstance(item, dict):
                     continue
-                fund_name = str(item.get("fund_name") or "").strip()
-                if not fund_name:
+                firm = str(item.get("firm") or "").strip()
+                if not firm:
                     continue
-                # Skip excluded funds
-                if exclude and fund_name.lower() in exclude:
+                if exclude and firm.lower() in exclude:
                     continue
-                record_id = item.get("id") or _slugify(fund_name)
+
+                record_id = _slugify(firm)
                 if record_id in seen_ids:
                     record_id = f"{record_id}_{len(seen_ids)}"
                 seen_ids.add(record_id)
 
+                raw_tier = item.get("tier")
+                tier = raw_tier if raw_tier in (1, 2, 3) else 3
+
                 records.append(InvestorRecord(
                     id=record_id,
-                    fund_name=fund_name,
-                    target_partner=item.get("target_partner"),
-                    check_size_raw=item.get("check_size_raw"),
-                    fund_size_raw=item.get("fund_size_raw"),
-                    areas_of_focus=item.get("areas_of_focus") or [],
-                    stages_invested=item.get("stages_invested") or [],
-                    portfolio_companies=item.get("portfolio_companies") or [],
-                    website=item.get("website"),
-                    geography=item.get("geography"),
-                    lead_or_follow=item.get("lead_or_follow"),
+                    fund_name=firm,
+                    target_partner=item.get("recommended_partner"),
+                    partner_title=item.get("partner_title"),
+                    website=item.get("firm_url"),
+                    linkedin_url=item.get("partner_linkedin"),
+                    geography=item.get("geo_focus"),
+                    check_size_raw=item.get("typical_lead_check_usd"),
+                    lead_or_follow="Lead" if item.get("leads_round_frequently") == "Yes" else None,
+                    leads_round_frequently=item.get("leads_round_frequently"),
+                    prestige_score=max(0, min(100, int(item.get("prestige_score") or 0))),
+                    fit_score=max(0, min(100, int(item.get("fit_score") or 0))),
+                    tier=tier,
+                    why_fit=item.get("why_fit") or [],
+                    relevant_past_investments=item.get("relevant_past_investments") or [],
+                    evidence_links=item.get("evidence_links") or [],
+                    has_competitor_conflict=bool(item.get("has_competitor_conflict", False)),
+                    conflicting_competitors=item.get("conflicting_competitors") or [],
+                    notes=item.get("notes"),
                     source=DataSource.claude,
                 ))
-            logger.info(f"Generated longlist of {len(records)} investors")
+
+            logger.info(f"Full investor research returned {len(records)} records")
             return records
+
         except Exception as e:
-            logger.error(f"Longlist generation failed: {e}")
+            logger.error(f"Full investor list generation failed: {e}")
             return []
 
 
-# ─── Phase 3: Enrich + Score ─────────────────────────────────────────────────
+# ─── Progress-wrapped alias for use in pipeline ──────────────────────────────
 
-def _build_investor_block(investors: list[InvestorRecord]) -> str:
-    items = []
-    for inv in investors:
-        focus = ", ".join(inv.areas_of_focus[:8]) or "Unknown"
-        stages = ", ".join(inv.stages_invested[:4]) or "Unknown"
-        portfolio = ", ".join(inv.portfolio_companies[:10]) or "None listed"
-        check = inv.check_size_raw or "Unknown"
-        fund_size = inv.fund_size_raw or "Unknown"
-        items.append(
-            f'ID: {inv.id}\n'
-            f'  Fund: {inv.fund_name}\n'
-            f'  Partner: {inv.target_partner or "Unknown"}\n'
-            f'  Focus: {focus}\n'
-            f'  Stages: {stages}\n'
-            f'  Check Size: {check}\n'
-            f'  Fund Size: {fund_size}\n'
-            f'  Geography: {inv.geography or "Unknown"}\n'
-            f'  Portfolio: {portfolio}'
-        )
-    return "\n\n".join(items)
-
-
-async def enrich_and_score_batch(
-    investors: list[InvestorRecord],
+async def generate_investors_with_progress(
     request: FindInvestorsRequest,
     conflict_map: dict[str, list[str]],
-) -> list[InvestorRecord]:
-    """Enrich and score a batch of investors in a single Claude call."""
-    async with _semaphore:
-        await rate_limiter.acquire()
-        client = _get_client()
-
-        company_profile = _build_company_profile(request)
-        investor_block = _build_investor_block(investors)
-        conflict_json = json.dumps(conflict_map) if conflict_map else "{}"
-        competitor_list = ", ".join(request.competitors) if request.competitors else "None"
-
-        prompt = f"""You are a meticulous venture research analyst. Enrich and score each investor below for this company.
-
-## Company Profile
-{company_profile}
-
-## Competitors to Flag as Conflicts
-{competitor_list}
-
-## Known Competitor Investors (conflict map)
-{conflict_json}
-
-## Investors to Score
-{investor_block}
-
-## Scoring Rubric
-**PrestigeScore (0-100):**
-- Outcomes/Brand (30pts): Track record of exits, unicorns, fund reputation
-- Lead Velocity (25pts): How frequently they lead rounds at this stage
-- Platform Strength (15pts): Value-add beyond capital (network, hiring, BD)
-- Cross-Cycle Conviction (15pts): Invested through downturns, consistent follow-on
-- Peer Signaling (15pts): Co-investor quality, LP base credibility
-
-**FitScore (0-100):**
-- Sector Relevance (35pts): Portfolio alignment with this company's sector and keywords
-- Thesis Fit (35pts): Does their stated investment thesis match this business model and ICP?
-- Geo/Stage Match (15pts): Geography and check size alignment with this round
-- Conflict Risk (15pts): Penalize if they have active board seats in direct competitors
-
-**Tier:**
-- Tier 1: PrestigeScore 80-100
-- Tier 2: PrestigeScore 60-79
-- Tier 3: PrestigeScore 40-59
-
-## Instructions
-For EACH investor, return an enriched object. Use your training knowledge to fill in accurate details.
-If you're unsure of a specific URL or detail, use your best knowledge or omit it.
-
-Return ONLY a valid JSON array, no markdown:
-[{{
-  "id": "<exact id>",
-  "partner_title": "General Partner",
-  "linkedin_url": "https://linkedin.com/in/...",
-  "prestige_score": 0-100,
-  "fit_score": 0-100,
-  "tier": 1 or 2 or 3,
-  "why_fit": ["Bullet 1 explaining fit", "Bullet 2", "Bullet 3"],
-  "relevant_portfolio": ["Company (Stage, Year)", ...],
-  "evidence_links": ["https://...", "https://..."],
-  "has_competitor_conflict": true or false,
-  "conflicting_competitors": ["CompetitorName if applicable"],
-  "notes": "One sentence additional note"
-}}]
-
-Return exactly {len(investors)} objects."""
-
-        try:
-            message = await client.messages.create(
-                model=settings.claude_model,
-                max_tokens=4096,
-                messages=[{"role": "user", "content": prompt}],
-            )
-            raw = message.content[0].text
-            score_data = _extract_json(raw)
-            score_map = {item["id"]: item for item in score_data if "id" in item}
-
-            result = []
-            for inv in investors:
-                enriched = inv.model_copy(deep=True)
-                data = score_map.get(inv.id, {})
-                if data:
-                    enriched.partner_title = data.get("partner_title") or inv.partner_title
-                    enriched.linkedin_url = data.get("linkedin_url") or inv.linkedin_url
-                    enriched.prestige_score = max(0, min(100, int(data.get("prestige_score") or 0)))
-                    enriched.fit_score = max(0, min(100, int(data.get("fit_score") or 0)))
-                    raw_tier = data.get("tier")
-                    enriched.tier = raw_tier if raw_tier in (1, 2, 3) else 3
-                    enriched.why_fit = data.get("why_fit") or []
-                    enriched.relevant_portfolio = data.get("relevant_portfolio") or []
-                    enriched.evidence_links = data.get("evidence_links") or []
-                    enriched.has_competitor_conflict = bool(data.get("has_competitor_conflict", False))
-                    enriched.conflicting_competitors = data.get("conflicting_competitors") or []
-                    enriched.notes = data.get("notes")
-                else:
-                    enriched.prestige_score = 0
-                    enriched.fit_score = 0
-                    enriched.tier = 3
-                result.append(enriched)
-            return result
-        except Exception as e:
-            logger.error(f"Enrichment batch failed: {e}")
-            for inv in investors:
-                inv.prestige_score = 0
-                inv.fit_score = 0
-                inv.tier = 3
-            return investors
-
-
-async def enrich_and_score_all(
-    investors: list[InvestorRecord],
-    request: FindInvestorsRequest,
-    conflict_map: dict[str, list[str]],
+    target: int = 100,
+    exclude: set[str] | None = None,
     progress_callback: Callable[[str], Awaitable[None]] | None = None,
 ) -> list[InvestorRecord]:
-    """Enrich and score all investors in concurrent batches."""
-    batch_size = settings.scoring_batch_size
-    batches = [
-        investors[i: i + batch_size]
-        for i in range(0, len(investors), batch_size)
-    ]
-    total_investors = len(investors)
-    scored: list[InvestorRecord] = []
-    completed = 0
-
-    async def score_one(batch: list[InvestorRecord]) -> list[InvestorRecord]:
-        nonlocal completed
-        result = await enrich_and_score_batch(batch, request, conflict_map)
-        completed += len(batch)
-        if progress_callback:
-            await progress_callback(
-                f"Enriched {min(completed, total_investors)}/{total_investors} investors"
-            )
-        return result
-
-    tasks = [score_one(batch) for batch in batches]
-    results = await asyncio.gather(*tasks, return_exceptions=True)
-
-    for r in results:
-        if isinstance(r, Exception):
-            logger.error(f"Enrichment batch exception: {r}")
-            continue
-        scored.extend(r)
-
-    return scored
+    if progress_callback:
+        await progress_callback("generate")
+    result = await generate_full_investor_list(request, conflict_map, target, exclude)
+    if progress_callback:
+        await progress_callback(f"Generated {len(result)} investors")
+    return result

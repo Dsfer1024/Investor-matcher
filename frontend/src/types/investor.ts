@@ -1,24 +1,28 @@
 export interface Investor {
   id: string;
   rank: number;
-  fitScore: number;
-  prestigeScore: number;
+  // Scores & tier
   tier: 1 | 2 | 3;
+  prestigeScore: number;
+  fitScore: number;
+  // Fund identity
   fundName: string;
-  targetPartner: string | null;
+  firmUrl: string | null;
+  recommendedPartner: string | null;
   partnerTitle: string | null;
-  fundSize: string | null;
-  checkSize: string | null;
-  leadOrFollow: string | null;
-  areasOfFocus: string[];
-  relevantPortfolioCompanies: string[];
+  partnerLinkedIn: string | null;
+  // Investment parameters
+  geoFocus: string | null;
+  typicalLeadCheckUsd: string | null;
+  leadsRoundFrequently: string | null;
+  // Narrative
   whyFit: string[];
+  relevantPastInvestments: string[];
   evidenceLinks: string[];
+  // Conflict
   hasCompetitorConflict: boolean;
   conflictingCompetitors: string[];
-  website: string | null;
-  linkedinUrl: string | null;
-  geography: string | null;
+  // Meta
   notes: string | null;
   source: string;
 }

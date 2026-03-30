@@ -3,7 +3,7 @@ import type { Investor } from "../types/investor";
 
 type SortKey = keyof Pick<
   Investor,
-  "rank" | "fitScore" | "prestigeScore" | "tier" | "fundName" | "fundSize" | "checkSize"
+  "rank" | "tier" | "fitScore" | "prestigeScore" | "fundName" | "typicalLeadCheckUsd" | "geoFocus"
 >;
 
 type Direction = "asc" | "desc";

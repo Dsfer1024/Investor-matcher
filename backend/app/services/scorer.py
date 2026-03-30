@@ -1,4 +1,4 @@
-"""Dynamic AI pipeline: conflict research → longlist → enrich → gap fill → sort."""
+"""Dynamic AI pipeline: conflict research → full research → gap fill → sort."""
 import logging
 from typing import Callable, Awaitable
 
@@ -25,7 +25,7 @@ async def run_dynamic_pipeline(
     request: FindInvestorsRequest,
     progress_callback: Callable[[str], Awaitable[None]] | None = None,
 ) -> list[InvestorRecord]:
-    """Full dynamic pipeline delegating all research to Claude."""
+    """Full dynamic pipeline: conflict research → comprehensive AI list → gap fill → sort."""
 
     async def _progress(msg: str) -> None:
         if progress_callback:
@@ -36,41 +36,31 @@ async def run_dynamic_pipeline(
     conflict_map = await claude_service.research_competitor_conflicts(request.competitors)
     logger.info(f"Conflict map built for {len(conflict_map)} competitors")
 
-    # Phase 2: Generate investor longlist
+    # Phase 2: Single comprehensive research call
     await _progress("generate")
-    longlist = await claude_service.generate_investor_longlist(
+    investors = await claude_service.generate_full_investor_list(
         request, conflict_map, target=settings.longlist_target
     )
-    logger.info(f"Longlist contains {len(longlist)} investors from Claude")
+    logger.info(f"Full research returned {len(investors)} investors")
 
     # Merge Excel supplement (additive only)
     excel = get_public_investors()
     if excel:
-        longlist = deduplicate(longlist + excel)
-        logger.info(f"After Excel merge + dedup: {len(longlist)} unique investors")
+        investors = deduplicate(investors + excel)
+        logger.info(f"After Excel merge + dedup: {len(investors)} unique investors")
 
-    # Phase 3: Enrich + score in concurrent batches
-    await _progress("enrich")
-    scored = await claude_service.enrich_and_score_all(
-        longlist, request, conflict_map, progress_callback
-    )
-    logger.info(f"Enriched {len(scored)} investors")
-
-    # Phase 4: Gap fill if below minimum
-    if len(scored) < settings.min_results_guarantee:
+    # Phase 3: Gap fill if below minimum
+    if len(investors) < settings.min_results_guarantee:
         await _progress("gap")
-        gap = settings.min_results_guarantee - len(scored)
-        exclude = {inv.fund_name.lower() for inv in scored}
-        extra = await claude_service.generate_investor_longlist(
+        gap = settings.min_results_guarantee - len(investors)
+        exclude = {inv.fund_name.lower() for inv in investors}
+        extra = await claude_service.generate_full_investor_list(
             request, conflict_map, target=gap + 20, exclude=exclude
         )
         logger.info(f"Gap fill: generated {len(extra)} additional investors")
         if extra:
-            extra_scored = await claude_service.enrich_and_score_all(
-                extra, request, conflict_map
-            )
-            scored.extend(extra_scored)
-            logger.info(f"After gap fill: {len(scored)} total investors")
+            investors.extend(extra)
+            logger.info(f"After gap fill: {len(investors)} total investors")
 
-    # Phase 5: Sort and return top 100
-    return sort_by_tier_and_score(scored)[:100]
+    # Phase 4: Sort and return top 100
+    return sort_by_tier_and_score(investors)[:100]

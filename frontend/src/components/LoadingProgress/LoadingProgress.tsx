@@ -2,9 +2,8 @@ import type { ProgressStep } from "../../types/investor";
 
 const STEPS: { id: string; label: string }[] = [
   { id: "conflicts", label: "Researching competitor conflicts..." },
-  { id: "generate", label: "Generating investor longlist with AI..." },
-  { id: "enrich", label: "Enriching & scoring investor profiles..." },
-  { id: "gap", label: "Checking for gaps (ensuring 80+ results)..." },
+  { id: "generate", label: "Generating & scoring investor list with AI..." },
+  { id: "gap", label: "Gap fill: ensuring 80+ results..." },
   { id: "rank", label: "Ranking & tiering results..." },
 ];
 
@@ -37,24 +36,9 @@ export default function LoadingProgress({ steps }: Props) {
                   </svg>
                 )}
                 {status === "active" && (
-                  <svg
-                    className="w-5 h-5 text-blue-500 animate-spin"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    />
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8v8H4z"
-                    />
+                  <svg className="w-5 h-5 text-blue-500 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
                   </svg>
                 )}
                 {status === "pending" && (
@@ -86,7 +70,7 @@ export default function LoadingProgress({ steps }: Props) {
         })}
       </div>
       <p className="text-xs text-gray-400 mt-4">
-        AI research typically takes 60–75 seconds
+        AI research typically takes 45–75 seconds
       </p>
     </div>
   );

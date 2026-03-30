@@ -23,6 +23,7 @@ class InvestorRecord(BaseModel):
     check_size_max_usd: Optional[int] = None
     check_size_raw: Optional[str] = None
     lead_or_follow: Optional[str] = None
+    leads_round_frequently: Optional[str] = None   # "Yes" / "No"
     areas_of_focus: list[str] = Field(default_factory=list)
     portfolio_companies: list[str] = Field(default_factory=list)
     website: Optional[str] = None
@@ -35,8 +36,8 @@ class InvestorRecord(BaseModel):
     # Scoring fields — populated by claude_service
     fit_score: Optional[int] = None
     prestige_score: Optional[int] = None
-    tier: Optional[int] = None                  # 1, 2, or 3
-    relevant_portfolio: list[str] = Field(default_factory=list)
+    tier: Optional[int] = None                           # 1, 2, or 3
+    relevant_past_investments: list[str] = Field(default_factory=list)
     why_fit: list[str] = Field(default_factory=list)
     evidence_links: list[str] = Field(default_factory=list)
     has_competitor_conflict: bool = False

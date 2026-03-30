@@ -7,31 +7,26 @@ interface Props {
 }
 
 function TierBadge({ tier }: { tier: 1 | 2 | 3 }) {
-  const styles = {
+  const styles: Record<number, string> = {
     1: "bg-yellow-100 text-yellow-800 border border-yellow-300",
     2: "bg-gray-100 text-gray-600 border border-gray-300",
     3: "bg-white text-gray-400 border border-gray-200",
   };
-  const labels = { 1: "Tier 1", 2: "Tier 2", 3: "Tier 3" };
   return (
-    <span
-      className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${styles[tier]}`}
-    >
-      {labels[tier]}
+    <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${styles[tier]}`}>
+      T{tier}
     </span>
   );
 }
 
-function ScoreBadge({ score, label }: { score: number; label?: string }) {
+function ScorePill({ score }: { score: number }) {
   const color =
-    score >= 75
-      ? "bg-green-100 text-green-800"
-      : score >= 50
-      ? "bg-yellow-100 text-yellow-800"
-      : "bg-red-100 text-red-800";
+    score >= 75 ? "bg-green-100 text-green-800"
+    : score >= 50 ? "bg-yellow-100 text-yellow-800"
+    : "bg-red-100 text-red-800";
   return (
     <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${color}`}>
-      {label ? `${label}: ` : ""}{score}
+      {score}
     </span>
   );
 }
@@ -50,20 +45,18 @@ function Pill({ text }: { text: string }) {
 }
 
 function WhyFitCell({ bullets }: { bullets: string[] }) {
-  if (!bullets || bullets.length === 0) return <span className="text-gray-300 text-xs">—</span>;
+  if (!bullets?.length) return <span className="text-gray-300 text-xs">—</span>;
   return (
-    <ul className="list-disc list-inside space-y-0.5 max-w-[250px]">
+    <ul className="list-disc list-inside space-y-0.5 min-w-[220px] max-w-[280px]">
       {bullets.slice(0, 3).map((b, i) => (
-        <li key={i} className="text-xs text-gray-600 leading-snug">
-          {b}
-        </li>
+        <li key={i} className="text-xs text-gray-600 leading-snug">{b}</li>
       ))}
     </ul>
   );
 }
 
 function EvidenceLinks({ links }: { links: string[] }) {
-  if (!links || links.length === 0) return <span className="text-gray-300 text-xs">—</span>;
+  if (!links?.length) return <span className="text-gray-300 text-xs">—</span>;
   return (
     <div className="flex gap-1 flex-wrap">
       {links.slice(0, 3).map((url, i) => (
@@ -83,6 +76,26 @@ function EvidenceLinks({ links }: { links: string[] }) {
 
 export default function ResultsTable({ investors }: Props) {
   const { sorted, sortKey, direction, toggleSort } = useTableSort(investors);
+
+  const sortableCols = [
+    { key: "rank" as const, label: "#" },
+    { key: "tier" as const, label: "Tier" },
+    { key: "fitScore" as const, label: "FitScore" },
+    { key: "prestigeScore" as const, label: "Prestige" },
+    { key: "fundName" as const, label: "Firm" },
+  ];
+
+  const staticCols = [
+    "Recommended Partner",
+    "Partner Title",
+    "Geo Focus",
+    "Lead Check (USD)",
+    "Leads Round?",
+    "Why Fit",
+    "Past Investments",
+    "Evidence",
+    "Notes",
+  ];
 
   return (
     <div>
@@ -109,15 +122,7 @@ export default function ResultsTable({ investors }: Props) {
         <table className="w-full text-sm">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
-              {(
-                [
-                  { key: "rank", label: "#" },
-                  { key: "tier", label: "Tier" },
-                  { key: "fitScore", label: "Fit" },
-                  { key: "prestigeScore", label: "Prestige" },
-                  { key: "fundName", label: "Fund" },
-                ] as const
-              ).map(({ key, label }) => (
+              {sortableCols.map(({ key, label }) => (
                 <th
                   key={key}
                   className="px-3 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wide cursor-pointer hover:text-gray-700 whitespace-nowrap"
@@ -127,14 +132,7 @@ export default function ResultsTable({ investors }: Props) {
                   <SortIcon active={sortKey === key} direction={direction} />
                 </th>
               ))}
-              {[
-                "Partner",
-                "Check Size",
-                "Lead/Follow",
-                "Why Fit",
-                "Evidence",
-                "Relevant Portfolio",
-              ].map((h) => (
+              {staticCols.map((h) => (
                 <th
                   key={h}
                   className="px-3 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wide whitespace-nowrap"
@@ -154,20 +152,29 @@ export default function ResultsTable({ investors }: Props) {
                     : "hover:bg-gray-50"
                 }
               >
+                {/* # */}
                 <td className="px-3 py-3 text-gray-400 text-xs font-mono">{inv.rank}</td>
+
+                {/* Tier */}
                 <td className="px-3 py-3">
                   <TierBadge tier={inv.tier} />
                 </td>
+
+                {/* FitScore */}
                 <td className="px-3 py-3">
-                  <ScoreBadge score={inv.fitScore} />
+                  <ScorePill score={inv.fitScore} />
                 </td>
+
+                {/* PrestigeScore */}
                 <td className="px-3 py-3">
-                  <ScoreBadge score={inv.prestigeScore} />
+                  <ScorePill score={inv.prestigeScore} />
                 </td>
+
+                {/* Firm */}
                 <td className="px-3 py-3 font-medium text-gray-800 whitespace-nowrap">
-                  {inv.website ? (
+                  {inv.firmUrl ? (
                     <a
-                      href={inv.website}
+                      href={inv.firmUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="hover:text-blue-600 hover:underline"
@@ -182,58 +189,85 @@ export default function ResultsTable({ investors }: Props) {
                       ⚠ Conflict: {inv.conflictingCompetitors.join(", ")}
                     </span>
                   )}
-                  {inv.notes && (
-                    <p className="text-xs text-gray-400 font-normal mt-0.5">{inv.notes}</p>
-                  )}
                 </td>
+
+                {/* Recommended Partner */}
                 <td className="px-3 py-3 text-gray-600 whitespace-nowrap">
-                  {inv.targetPartner ? (
-                    inv.linkedinUrl ? (
+                  {inv.recommendedPartner ? (
+                    inv.partnerLinkedIn ? (
                       <a
-                        href={inv.linkedinUrl}
+                        href={inv.partnerLinkedIn}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-blue-600 hover:underline"
                       >
-                        {inv.targetPartner}
+                        {inv.recommendedPartner}
                       </a>
                     ) : (
-                      inv.targetPartner
+                      inv.recommendedPartner
                     )
                   ) : (
                     <span className="text-gray-300">—</span>
                   )}
-                  {inv.partnerTitle && (
-                    <p className="text-xs text-gray-400">{inv.partnerTitle}</p>
+                </td>
+
+                {/* Partner Title */}
+                <td className="px-3 py-3 text-gray-500 text-xs whitespace-nowrap">
+                  {inv.partnerTitle ?? <span className="text-gray-300">—</span>}
+                </td>
+
+                {/* Geo Focus */}
+                <td className="px-3 py-3 text-gray-600 whitespace-nowrap">
+                  {inv.geoFocus ?? <span className="text-gray-300">—</span>}
+                </td>
+
+                {/* Lead Check USD */}
+                <td className="px-3 py-3 text-gray-600 whitespace-nowrap">
+                  {inv.typicalLeadCheckUsd ?? <span className="text-gray-300">—</span>}
+                </td>
+
+                {/* Leads Round Frequently */}
+                <td className="px-3 py-3 text-center">
+                  {inv.leadsRoundFrequently === "Yes" ? (
+                    <span className="inline-block px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full font-medium">Yes</span>
+                  ) : inv.leadsRoundFrequently === "No" ? (
+                    <span className="inline-block px-2 py-0.5 bg-gray-100 text-gray-500 text-xs rounded-full">No</span>
+                  ) : (
+                    <span className="text-gray-300 text-xs">—</span>
                   )}
                 </td>
-                <td className="px-3 py-3 text-gray-600 whitespace-nowrap">
-                  {inv.checkSize ?? <span className="text-gray-300">—</span>}
-                </td>
-                <td className="px-3 py-3 text-gray-600 whitespace-nowrap">
-                  {inv.leadOrFollow ?? <span className="text-gray-300">—</span>}
-                </td>
+
+                {/* Why Fit */}
                 <td className="px-3 py-3">
                   <WhyFitCell bullets={inv.whyFit} />
                 </td>
-                <td className="px-3 py-3">
-                  <EvidenceLinks links={inv.evidenceLinks} />
-                </td>
+
+                {/* Relevant Past Investments */}
                 <td className="px-3 py-3 max-w-[200px]">
-                  {inv.relevantPortfolioCompanies.length > 0 ? (
+                  {inv.relevantPastInvestments?.length > 0 ? (
                     <div className="flex flex-wrap">
-                      {inv.relevantPortfolioCompanies.slice(0, 3).map((c) => (
+                      {inv.relevantPastInvestments.slice(0, 3).map((c) => (
                         <Pill key={c} text={c} />
                       ))}
-                      {inv.relevantPortfolioCompanies.length > 3 && (
+                      {inv.relevantPastInvestments.length > 3 && (
                         <span className="text-xs text-gray-400">
-                          +{inv.relevantPortfolioCompanies.length - 3} more
+                          +{inv.relevantPastInvestments.length - 3} more
                         </span>
                       )}
                     </div>
                   ) : (
                     <span className="text-gray-300 text-xs">—</span>
                   )}
+                </td>
+
+                {/* Evidence */}
+                <td className="px-3 py-3">
+                  <EvidenceLinks links={inv.evidenceLinks} />
+                </td>
+
+                {/* Notes */}
+                <td className="px-3 py-3 text-xs text-gray-500 max-w-[180px]">
+                  {inv.notes ?? <span className="text-gray-300">—</span>}
                 </td>
               </tr>
             ))}
