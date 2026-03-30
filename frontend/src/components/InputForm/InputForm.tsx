@@ -71,7 +71,7 @@ export default function InputForm({ onSubmit, loading }: Props) {
           type="url"
           value={form.companyUrl}
           onChange={(e) => set("companyUrl", e.target.value)}
-          placeholder="https://yourcompany.com"
+          placeholder="https://yourcompany.com (must include https://)"
           className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
             errors.companyUrl ? "border-red-400" : "border-gray-300"
           }`}
@@ -193,7 +193,7 @@ export default function InputForm({ onSubmit, loading }: Props) {
       <div>
         <MultiTagInput
           label="Competitor URLs *"
-          placeholder="Paste a competitor URL and press Enter. Add as many as relevant."
+          placeholder="Paste a competitor URL (must include https://) and press Enter. Add as many as relevant."
           values={form.competitors}
           onChange={(v) => set("competitors", v)}
         />
@@ -203,7 +203,7 @@ export default function InputForm({ onSubmit, loading }: Props) {
       {/* Further Context */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Further Context <span className="text-red-500">*</span>
+          Further Context <span className="text-gray-400 font-normal">(optional)</span>
         </label>
         <textarea
           value={form.furtherContext}
