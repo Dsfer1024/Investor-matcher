@@ -230,18 +230,18 @@ Deliver the single JSON array now. Minimum {target} rows."""
         try:
             message = await client.messages.create(
                 model=settings.claude_model,
-                max_tokens=8192,
+                max_tokens=16000,
                 messages=[{"role": "user", "content": prompt}],
             )
             raw = message.content[0].text
             logger.info(
-                f"generate_full_investor_list raw response length: {len(raw)} chars, "
-                f"stop_reason: {message.stop_reason}"
+                f"generate_full_investor_list: {len(raw)} chars, "
+                f"stop_reason={message.stop_reason}, target={target}"
             )
             if message.stop_reason == "max_tokens":
-                logger.warning(
-                    "Response was truncated (hit max_tokens). "
-                    f"First 300 chars: {raw[:300]!r}"
+                logger.error(
+                    f"STILL TRUNCATED at max_tokens=16000! "
+                    f"First 500 chars: {raw[:500]!r}"
                 )
             data = _extract_json(raw)
             if not data:

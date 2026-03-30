@@ -110,6 +110,24 @@ export default function App() {
         {state === "results" && investors.length > 0 && (
           <ResultsTable investors={investors} />
         )}
+
+        {state === "results" && investors.length === 0 && (
+          <div className="max-w-md mx-auto">
+            <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6 text-center">
+              <p className="text-yellow-800 font-medium mb-2">No investors returned</p>
+              <p className="text-yellow-700 text-sm mb-4">
+                The AI research call completed but returned no results. This is usually a temporary
+                issue — please try again. If it persists, try adding more detail to your form inputs.
+              </p>
+              <button
+                onClick={reset}
+                className="px-4 py-2 bg-yellow-600 text-white text-sm rounded-lg hover:bg-yellow-700"
+              >
+                Try Again
+              </button>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );
