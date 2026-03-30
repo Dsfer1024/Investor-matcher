@@ -1,0 +1,38 @@
+from pydantic import BaseModel, Field
+from typing import Optional
+from enum import Enum
+
+
+class DataSource(str, Enum):
+    openvc = "openvc"
+    github = "github"
+    user_upload = "user_upload"
+    merged = "merged"
+
+
+class InvestorRecord(BaseModel):
+    """Internal record — superset of output columns + scoring fields."""
+    id: str
+    fund_name: str
+    target_partner: Optional[str] = None
+    fund_size_raw: Optional[str] = None
+    fund_size_usd: Optional[int] = None
+    check_size_min_usd: Optional[int] = None
+    check_size_max_usd: Optional[int] = None
+    check_size_raw: Optional[str] = None
+    lead_or_follow: Optional[str] = None
+    areas_of_focus: list[str] = Field(default_factory=list)
+    portfolio_companies: list[str] = Field(default_factory=list)
+    website: Optional[str] = None
+    linkedin_url: Optional[str] = None
+    geography: Optional[str] = None
+    stages_invested: list[str] = Field(default_factory=list)
+    source: DataSource = DataSource.openvc
+    raw_data: dict = Field(default_factory=dict)
+
+    # Populated by claude_service
+    fit_score: Optional[int] = None
+    relevant_portfolio: list[str] = Field(default_factory=list)
+    has_competitor_conflict: bool = False
+    conflicting_competitors: list[str] = Field(default_factory=list)
+    score_reasoning: Optional[str] = None

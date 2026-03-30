@@ -1,0 +1,3 @@
+Fund Name,Partner Name,Fund Size,Check Size Min (USD),Check Size Max (USD),Lead or Follow,Focus Areas (comma-separated),Portfolio Companies (comma-separated),Stages,Website,LinkedIn URL,Geography,Notes
+Acme Ventures,Jane Smith,$150M,500000,2000000,Lead,"B2B SaaS, Fintech","Stripe, Brex, Ramp","Seed, Series A",https://acmevc.com,https://linkedin.com/in/janesmith,USA,Very active in NYC market
+Example Capital,John Doe,$300M,2000000,10000000,Both,"Vertical AI, Enterprise Software","Salesforce, HubSpot","Series A, Series B",https://examplecap.com,,Global,Strong network in enterprise sales
