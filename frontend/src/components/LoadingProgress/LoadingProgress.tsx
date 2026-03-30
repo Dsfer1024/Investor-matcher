@@ -12,17 +12,14 @@ export default function LoadingProgress({ steps }: Props) {
   const stepMap = Object.fromEntries(steps.map((s) => [s.id, s]));
 
   return (
-    <div
-      style={{ backgroundColor: "rgba(45,0,255,0.07)", borderColor: "rgba(45,0,255,0.3)" }}
-      className="border rounded-2xl p-8"
-    >
+    <div className="bg-white border border-gray-200 rounded-2xl p-8 shadow-sm">
       {/* Logo + title */}
       <div className="flex items-center gap-3 mb-6">
         <div
           style={{ backgroundColor: "#2d00ff" }}
           className="w-2 h-2 rounded-full animate-pulse"
         />
-        <h2 className="text-base font-semibold text-white">Finding your investors...</h2>
+        <h2 className="text-base font-semibold text-gray-900">Finding your investors...</h2>
       </div>
 
       <div className="space-y-4">
@@ -57,7 +54,7 @@ export default function LoadingProgress({ steps }: Props) {
               <span
                 className="text-sm"
                 style={{
-                  color: status === "active" ? "#ffffff" : status === "complete" ? "#666666" : "#cacaca",
+                  color: status === "active" ? "#111111" : status === "complete" ? "#9ca3af" : "#6b7280",
                   fontWeight: status === "active" ? 500 : 400,
                 }}
               >
@@ -68,11 +65,11 @@ export default function LoadingProgress({ steps }: Props) {
         })}
       </div>
 
-      <div style={{ borderTop: "1px solid rgba(45,0,255,0.2)" }} className="mt-6 pt-4 space-y-1">
-        <p style={{ color: "#ffffff" }} className="text-xs font-medium">
+      <div className="mt-6 pt-4 space-y-1 border-t border-gray-100">
+        <p style={{ color: "#2d00ff" }} className="text-xs font-semibold">
           AI will populate up to 50 investors
         </p>
-        <p style={{ color: "#666666" }} className="text-xs">
+        <p className="text-xs text-gray-400">
           Results appear as they're found — usually 30–45 seconds total
         </p>
       </div>

@@ -45,42 +45,41 @@ function ScoreBar({ score, color }: { score: number; color: string }) {
 function ExpandedDetail({ inv }: { inv: Investor }) {
   return (
     <tr>
-      <td colSpan={8} style={{ backgroundColor: "rgba(45,0,255,0.06)", borderBottom: "1px solid rgba(45,0,255,0.2)" }} className="p-0">
-        <div className="grid grid-cols-3" style={{ borderTop: "1px solid rgba(45,0,255,0.15)" }}>
-          <div className="px-5 py-4" style={{ borderRight: "1px solid rgba(45,0,255,0.15)" }}>
-            <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: "#2d00ff" }}>Why Fit</p>
+      <td colSpan={8} className="p-0 bg-gray-50 border-b border-gray-200">
+        <div className="grid grid-cols-3 divide-x divide-gray-200 border-t border-gray-200">
+          <div className="px-5 py-4">
+            <p className="text-xs font-semibold uppercase tracking-wide mb-2 text-[#2d00ff]">Why Fit</p>
             <ul className="space-y-1.5">
               {inv.whyFit.length ? inv.whyFit.map((b, i) => (
-                <li key={i} className="text-sm flex gap-2" style={{ color: "#cacaca" }}>
-                  <span style={{ color: "#2d00ff" }} className="flex-shrink-0">•</span>{b}
+                <li key={i} className="text-sm text-gray-700 flex gap-2">
+                  <span className="text-[#2d00ff] flex-shrink-0">•</span>{b}
                 </li>
-              )) : <li className="text-sm" style={{ color: "#666666" }}>—</li>}
+              )) : <li className="text-sm text-gray-400">—</li>}
             </ul>
           </div>
-          <div className="px-5 py-4" style={{ borderRight: "1px solid rgba(45,0,255,0.15)" }}>
-            <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: "#2d00ff" }}>Portfolio</p>
+          <div className="px-5 py-4">
+            <p className="text-xs font-semibold uppercase tracking-wide mb-2 text-[#2d00ff]">Portfolio</p>
             <div className="flex flex-wrap gap-1.5">
               {inv.relevantPastInvestments.length ? inv.relevantPastInvestments.map((c, i) => (
-                <span key={i} className="px-2 py-0.5 rounded text-xs" style={{ backgroundColor: "rgba(45,0,255,0.15)", border: "1px solid rgba(45,0,255,0.3)", color: "#cacaca" }}>{c}</span>
-              )) : <span className="text-sm" style={{ color: "#666666" }}>—</span>}
+                <span key={i} className="px-2 py-0.5 bg-white border border-gray-200 rounded text-xs text-gray-600 shadow-sm">{c}</span>
+              )) : <span className="text-sm text-gray-400">—</span>}
             </div>
           </div>
           <div className="px-5 py-4 space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: "#2d00ff" }}>Details</p>
-            {inv.geoFocus && <p className="text-sm" style={{ color: "#cacaca" }}>📍 {inv.geoFocus}</p>}
-            {inv.typicalLeadCheckUsd && <p className="text-sm" style={{ color: "#cacaca" }}>💰 {inv.typicalLeadCheckUsd}</p>}
+            <p className="text-xs font-semibold uppercase tracking-wide mb-2 text-[#2d00ff]">Details</p>
+            {inv.geoFocus && <p className="text-sm text-gray-600">📍 {inv.geoFocus}</p>}
+            {inv.typicalLeadCheckUsd && <p className="text-sm text-gray-600">💰 {inv.typicalLeadCheckUsd}</p>}
             {inv.leadsRoundFrequently && (
               <p className="text-sm">
-                🏆 Leads: <span style={{ color: inv.leadsRoundFrequently === "Yes" ? "#4ade80" : "#666666" }} className="font-medium">{inv.leadsRoundFrequently}</span>
+                🏆 Leads: <span className={`font-medium ${inv.leadsRoundFrequently === "Yes" ? "text-green-600" : "text-gray-400"}`}>{inv.leadsRoundFrequently}</span>
               </p>
             )}
-            {inv.notes && <p className="text-xs italic pt-2 mt-1" style={{ color: "#666666", borderTop: "1px solid rgba(45,0,255,0.15)" }}>{inv.notes}</p>}
+            {inv.notes && <p className="text-xs text-gray-400 italic border-t border-gray-200 pt-2 mt-1">{inv.notes}</p>}
             {inv.evidenceLinks.length > 0 && (
-              <div className="flex flex-wrap gap-1 pt-2" style={{ borderTop: "1px solid rgba(45,0,255,0.15)" }}>
+              <div className="flex flex-wrap gap-1 border-t border-gray-200 pt-2">
                 {inv.evidenceLinks.map((url, i) => (
                   <a key={i} href={url} target="_blank" rel="noopener noreferrer"
-                    style={{ backgroundColor: "rgba(45,0,255,0.15)", border: "1px solid rgba(45,0,255,0.4)", color: "#2d00ff" }}
-                    className="px-2 py-0.5 rounded text-xs hover:opacity-80 font-mono">
+                    className="px-2 py-0.5 bg-white border border-gray-200 rounded text-xs text-[#2d00ff] hover:bg-blue-50 font-mono">
                     [{i + 1}]
                   </a>
                 ))}
@@ -180,12 +179,9 @@ export default function ResultsTable({ investors, quickThesis, companyUrl }: Pro
 
       {/* Quick Thesis */}
       {quickThesis && (
-        <div
-          style={{ borderLeftColor: "#2d00ff", backgroundColor: "rgba(45,0,255,0.06)", borderColor: "rgba(45,0,255,0.25)" }}
-          className="border border-l-4 rounded-xl px-5 py-4"
-        >
+        <div className="bg-white border-l-4 border-[#2d00ff] rounded-xl px-5 py-4 shadow-sm border border-gray-200">
           <p style={{ color: "#2d00ff" }} className="text-xs font-semibold uppercase tracking-wide mb-1">AI Thesis</p>
-          <p className="text-white text-sm leading-relaxed">{quickThesis}</p>
+          <p className="text-gray-700 text-sm leading-relaxed">{quickThesis}</p>
         </div>
       )}
 
@@ -196,28 +192,25 @@ export default function ResultsTable({ investors, quickThesis, companyUrl }: Pro
           placeholder="Search firm or partner..."
           value={search}
           onChange={e => setSearch(e.target.value)}
-          style={{ backgroundColor: "rgba(255,255,255,0.05)", borderColor: "rgba(45,0,255,0.3)", color: "#ffffff" }}
-          className="flex-1 min-w-[200px] border rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2d00ff] placeholder:text-[#666666]"
+          className="flex-1 min-w-[200px] border border-gray-200 bg-white rounded-xl px-4 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#2d00ff] placeholder:text-gray-400"
         />
         <div className="flex gap-1.5">
           {([0, 1, 2, 3] as const).map(t => (
             <button
               key={t}
               onClick={() => setTierFilter(t)}
-              style={tierFilter === t
-                ? { backgroundColor: "#2d00ff", borderColor: "#2d00ff", color: "#ffffff" }
-                : { backgroundColor: "rgba(255,255,255,0.05)", borderColor: "rgba(45,0,255,0.3)", color: "#cacaca" }}
-              className="px-3 py-2 rounded-xl text-xs font-semibold border transition-colors hover:border-[#2d00ff]"
+              style={tierFilter === t ? { backgroundColor: "#2d00ff", borderColor: "#2d00ff", color: "#ffffff" } : {}}
+              className={`px-3 py-2 rounded-xl text-xs font-semibold border transition-colors ${tierFilter !== t ? "bg-white border-gray-200 text-gray-600 hover:border-[#2d00ff]" : ""}`}
             >
               {t === 0 ? "All" : `T${t}`}
             </button>
           ))}
         </div>
-        <span style={{ color: "#666666" }} className="text-sm">{filtered.length} results</span>
+        <span className="text-sm text-gray-500">{filtered.length} results</span>
       </div>
 
       {/* Table */}
-      <div style={{ borderColor: "rgba(45,0,255,0.25)" }} className="rounded-2xl border overflow-hidden shadow-2xl">
+      <div className="rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
         <table className="w-full text-sm">
           <thead style={{ background: "linear-gradient(90deg, #00001b 0%, #0f0087 100%)" }}>
             <tr>
@@ -231,14 +224,13 @@ export default function ResultsTable({ investors, quickThesis, companyUrl }: Pro
               <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wide">Leads?</th>
             </tr>
           </thead>
-          <tbody style={{ backgroundColor: "#00001b" }} className="divide-y divide-[rgba(45,0,255,0.12)]">
+          <tbody className="bg-white divide-y divide-gray-100">
             {filtered.map(inv => (
               <>
                 <tr key={inv.id}
                   onClick={() => setExpandedId(expandedId === inv.id ? null : inv.id)}
-                  style={inv.hasCompetitorConflict ? { backgroundColor: "rgba(220,38,38,0.1)", borderLeft: "4px solid #ef4444" } : expandedId === inv.id ? { backgroundColor: "rgba(45,0,255,0.1)" } : {}}
-                  className={`cursor-pointer transition-colors ${!inv.hasCompetitorConflict && expandedId !== inv.id ? "hover:bg-[rgba(45,0,255,0.06)]" : ""}`}>
-                  <td className="px-4 py-3 font-mono text-xs" style={{ color: "#666666" }}>{inv.rank}</td>
+                  className={`cursor-pointer transition-colors ${inv.hasCompetitorConflict ? "bg-red-50 border-l-4 border-l-red-400" : expandedId === inv.id ? "bg-blue-50" : "hover:bg-gray-50"}`}>
+                  <td className="px-4 py-3 font-mono text-xs text-gray-400">{inv.rank}</td>
                   <td className="px-4 py-3"><TierBadge tier={inv.tier} /></td>
                   <td className="px-4 py-3"><ScoreBar score={inv.fitScore} color="bg-blue-500" /></td>
                   <td className="px-4 py-3"><ScoreBar score={inv.prestigeScore} color="bg-purple-400" /></td>
@@ -247,8 +239,8 @@ export default function ResultsTable({ investors, quickThesis, companyUrl }: Pro
                       <span className="text-slate-300 text-xs">{expandedId === inv.id ? "▼" : "▶"}</span>
                       <div>
                         {inv.firmUrl
-                          ? <a href={inv.firmUrl} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="font-semibold text-white hover:underline" style={{ color: "#ffffff" }} onMouseOver={e => (e.currentTarget.style.color="#2d00ff")} onMouseOut={e => (e.currentTarget.style.color="#ffffff")}>{inv.fundName}</a>
-                          : <span className="font-semibold text-white">{inv.fundName}</span>}
+                          ? <a href={inv.firmUrl} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="font-semibold text-gray-900 hover:underline hover:text-[#2d00ff]">{inv.fundName}</a>
+                          : <span className="font-semibold text-gray-900">{inv.fundName}</span>}
                         {inv.hasCompetitorConflict && (
                           <p className="text-xs text-red-600 mt-0.5">⚠ {inv.conflictingCompetitors.slice(0, 2).join(", ")}</p>
                         )}
@@ -259,13 +251,13 @@ export default function ResultsTable({ investors, quickThesis, companyUrl }: Pro
                     {inv.recommendedPartner ? (
                       <div>
                         {inv.partnerLinkedIn
-                          ? <a href={inv.partnerLinkedIn} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="hover:underline text-sm" style={{ color: "#2d00ff" }}>{inv.recommendedPartner}</a>
-                          : <span className="text-sm" style={{ color: "#cacaca" }}>{inv.recommendedPartner}</span>}
-                        {inv.partnerTitle && <p className="text-xs" style={{ color: "#666666" }}>{inv.partnerTitle}</p>}
+                          ? <a href={inv.partnerLinkedIn} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="hover:underline text-sm text-[#2d00ff]">{inv.recommendedPartner}</a>
+                          : <span className="text-sm text-gray-700">{inv.recommendedPartner}</span>}
+                        {inv.partnerTitle && <p className="text-xs text-gray-400">{inv.partnerTitle}</p>}
                       </div>
-                    ) : <span className="text-xs" style={{ color: "#333366" }}>—</span>}
+                    ) : <span className="text-xs text-gray-300">—</span>}
                   </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-sm" style={{ color: "#cacaca" }}>{inv.typicalLeadCheckUsd ?? <span style={{ color: "#333366" }}>—</span>}</td>
+                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">{inv.typicalLeadCheckUsd ?? <span className="text-gray-300">—</span>}</td>
                   <td className="px-4 py-3">
                     {inv.leadsRoundFrequently === "Yes"
                       ? <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full font-medium">Yes</span>

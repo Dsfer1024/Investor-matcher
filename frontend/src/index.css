@@ -3,13 +3,12 @@
 @tailwind utilities;
 
 body {
-  background-color: #00001b;
-  color: #ffffff;
+  background-color: #f3f4f6;
+  color: #111111;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Force readable dark text inside the white form card */
 input, textarea, select {
   color: #111111 !important;
 }

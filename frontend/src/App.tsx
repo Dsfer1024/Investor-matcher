@@ -59,7 +59,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "#00001b" }}>
+    <div className="min-h-screen bg-gray-100">
 
       {/* Header */}
       <header style={{ backgroundColor: "#00001b", borderBottom: "1px solid rgba(45,0,255,0.25)" }} className="px-6 py-4">
@@ -94,8 +94,8 @@ export default function App() {
         {state === "idle" && (
           <div className="max-w-2xl mx-auto">
             <div className="mb-8 text-center">
-              <h2 className="text-3xl font-bold text-white mb-2">Find Your Investors</h2>
-              <p style={{ color: "#cacaca" }} className="text-sm">
+              <h2 className="text-3xl font-bold text-gray-900 mb-2">Find Your Investors</h2>
+              <p className="text-sm text-gray-500">
                 Enter your company details and we'll surface the most relevant investors,
                 scored by AI and ranked by fit.
               </p>
@@ -116,12 +116,9 @@ export default function App() {
         {/* Error */}
         {state === "error" && (
           <div className="max-w-md mx-auto">
-            <div
-              style={{ backgroundColor: "rgba(45,0,255,0.08)", borderColor: "rgba(45,0,255,0.3)" }}
-              className="border rounded-2xl p-6 text-center"
-            >
-              <p className="text-white font-medium mb-2">Something went wrong</p>
-              <p style={{ color: "#cacaca" }} className="text-sm mb-5">{errorMsg}</p>
+            <div className="bg-white border border-gray-200 rounded-2xl p-6 text-center shadow-sm">
+              <p className="text-gray-900 font-medium mb-2">Something went wrong</p>
+              <p className="text-gray-500 text-sm mb-5">{errorMsg}</p>
               <button
                 onClick={reset}
                 style={{ backgroundColor: "#2d00ff" }}
@@ -141,12 +138,9 @@ export default function App() {
         {/* Empty results */}
         {state === "results" && investors.length === 0 && (
           <div className="max-w-md mx-auto">
-            <div
-              style={{ backgroundColor: "rgba(45,0,255,0.08)", borderColor: "rgba(45,0,255,0.3)" }}
-              className="border rounded-2xl p-6 text-center"
-            >
-              <p className="text-white font-medium mb-2">No investors returned</p>
-              <p style={{ color: "#cacaca" }} className="text-sm mb-5">
+            <div className="bg-white border border-gray-200 rounded-2xl p-6 text-center shadow-sm">
+              <p className="text-gray-900 font-medium mb-2">No investors returned</p>
+              <p className="text-gray-500 text-sm mb-5">
                 The AI research call completed but returned no results. Try adding more detail to your inputs.
               </p>
               <button
@@ -163,12 +157,14 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      <footer style={{ borderTop: "1px solid rgba(45,0,255,0.15)" }} className="mt-16 px-6 py-5">
+      <footer className="mt-16 px-6 py-5 border-t border-gray-200">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <img src={FRACTAL_LOGO_WHITE} alt="Fractal" className="h-5 w-auto opacity-60" />
-          <p style={{ color: "#666666" }} className="text-xs">
-            Powered by Fractal × Claude AI
-          </p>
+          <img
+            src="https://cdn.prod.website-files.com/6145e9ed201e02bd634fcdf9/614cbc692c28f65833c636a3_FractalDark.svg"
+            alt="Fractal"
+            className="h-5 w-auto opacity-50"
+          />
+          <p className="text-xs text-gray-400">Powered by Fractal × Claude AI</p>
         </div>
       </footer>
 
