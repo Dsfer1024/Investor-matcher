@@ -79,8 +79,8 @@ export default function App() {
           {state !== "idle" && (
             <button
               onClick={reset}
-              style={{ color: "#2d00ff", borderColor: "rgba(45,0,255,0.4)" }}
-              className="text-sm border rounded-lg px-4 py-2 hover:bg-[#2d00ff] hover:text-white transition-colors"
+              style={{ color: "#ffffff", borderColor: "rgba(255,255,255,0.3)" }}
+              className="text-sm border rounded-lg px-4 py-2 hover:bg-white/10 transition-colors"
             >
               ← New Search
             </button>
