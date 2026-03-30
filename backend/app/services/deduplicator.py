@@ -11,9 +11,10 @@ _STRIP_WORDS = {
 
 SOURCE_PRIORITY: dict[str, int] = {
     "user_upload": 0,
-    "openvc": 1,
-    "github": 2,
-    "merged": 3,
+    "claude": 1,
+    "openvc": 2,
+    "github": 3,
+    "merged": 4,
 }
 
 

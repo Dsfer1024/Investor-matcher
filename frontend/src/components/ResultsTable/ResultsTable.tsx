@@ -6,7 +6,23 @@ interface Props {
   investors: Investor[];
 }
 
-function ScoreBadge({ score }: { score: number }) {
+function TierBadge({ tier }: { tier: 1 | 2 | 3 }) {
+  const styles = {
+    1: "bg-yellow-100 text-yellow-800 border border-yellow-300",
+    2: "bg-gray-100 text-gray-600 border border-gray-300",
+    3: "bg-white text-gray-400 border border-gray-200",
+  };
+  const labels = { 1: "Tier 1", 2: "Tier 2", 3: "Tier 3" };
+  return (
+    <span
+      className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${styles[tier]}`}
+    >
+      {labels[tier]}
+    </span>
+  );
+}
+
+function ScoreBadge({ score, label }: { score: number; label?: string }) {
   const color =
     score >= 75
       ? "bg-green-100 text-green-800"
@@ -15,7 +31,7 @@ function ScoreBadge({ score }: { score: number }) {
       : "bg-red-100 text-red-800";
   return (
     <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${color}`}>
-      {score}
+      {label ? `${label}: ` : ""}{score}
     </span>
   );
 }
@@ -30,6 +46,38 @@ function Pill({ text }: { text: string }) {
     <span className="inline-block bg-gray-100 text-gray-600 text-xs px-1.5 py-0.5 rounded mr-1 mb-1">
       {text}
     </span>
+  );
+}
+
+function WhyFitCell({ bullets }: { bullets: string[] }) {
+  if (!bullets || bullets.length === 0) return <span className="text-gray-300 text-xs">—</span>;
+  return (
+    <ul className="list-disc list-inside space-y-0.5 max-w-[250px]">
+      {bullets.slice(0, 3).map((b, i) => (
+        <li key={i} className="text-xs text-gray-600 leading-snug">
+          {b}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function EvidenceLinks({ links }: { links: string[] }) {
+  if (!links || links.length === 0) return <span className="text-gray-300 text-xs">—</span>;
+  return (
+    <div className="flex gap-1 flex-wrap">
+      {links.slice(0, 3).map((url, i) => (
+        <a
+          key={i}
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-block px-1.5 py-0.5 bg-blue-50 text-blue-600 text-xs rounded hover:bg-blue-100 font-mono"
+        >
+          [{i + 1}]
+        </a>
+      ))}
+    </div>
   );
 }
 
@@ -64,7 +112,9 @@ export default function ResultsTable({ investors }: Props) {
               {(
                 [
                   { key: "rank", label: "#" },
-                  { key: "fitScore", label: "Fit Score" },
+                  { key: "tier", label: "Tier" },
+                  { key: "fitScore", label: "Fit" },
+                  { key: "prestigeScore", label: "Prestige" },
                   { key: "fundName", label: "Fund" },
                 ] as const
               ).map(({ key, label }) => (
@@ -78,11 +128,11 @@ export default function ResultsTable({ investors }: Props) {
                 </th>
               ))}
               {[
-                "Target Partner",
-                "Fund Size",
+                "Partner",
                 "Check Size",
                 "Lead/Follow",
-                "Focus Areas",
+                "Why Fit",
+                "Evidence",
                 "Relevant Portfolio",
               ].map((h) => (
                 <th
@@ -106,7 +156,13 @@ export default function ResultsTable({ investors }: Props) {
               >
                 <td className="px-3 py-3 text-gray-400 text-xs font-mono">{inv.rank}</td>
                 <td className="px-3 py-3">
+                  <TierBadge tier={inv.tier} />
+                </td>
+                <td className="px-3 py-3">
                   <ScoreBadge score={inv.fitScore} />
+                </td>
+                <td className="px-3 py-3">
+                  <ScoreBadge score={inv.prestigeScore} />
                 </td>
                 <td className="px-3 py-3 font-medium text-gray-800 whitespace-nowrap">
                   {inv.website ? (
@@ -126,6 +182,9 @@ export default function ResultsTable({ investors }: Props) {
                       ⚠ Conflict: {inv.conflictingCompetitors.join(", ")}
                     </span>
                   )}
+                  {inv.notes && (
+                    <p className="text-xs text-gray-400 font-normal mt-0.5">{inv.notes}</p>
+                  )}
                 </td>
                 <td className="px-3 py-3 text-gray-600 whitespace-nowrap">
                   {inv.targetPartner ? (
@@ -144,9 +203,9 @@ export default function ResultsTable({ investors }: Props) {
                   ) : (
                     <span className="text-gray-300">—</span>
                   )}
-                </td>
-                <td className="px-3 py-3 text-gray-600 whitespace-nowrap">
-                  {inv.fundSize ?? <span className="text-gray-300">—</span>}
+                  {inv.partnerTitle && (
+                    <p className="text-xs text-gray-400">{inv.partnerTitle}</p>
+                  )}
                 </td>
                 <td className="px-3 py-3 text-gray-600 whitespace-nowrap">
                   {inv.checkSize ?? <span className="text-gray-300">—</span>}
@@ -154,17 +213,11 @@ export default function ResultsTable({ investors }: Props) {
                 <td className="px-3 py-3 text-gray-600 whitespace-nowrap">
                   {inv.leadOrFollow ?? <span className="text-gray-300">—</span>}
                 </td>
-                <td className="px-3 py-3 max-w-[200px]">
-                  <div className="flex flex-wrap">
-                    {inv.areasOfFocus.slice(0, 4).map((f) => (
-                      <Pill key={f} text={f} />
-                    ))}
-                    {inv.areasOfFocus.length > 4 && (
-                      <span className="text-xs text-gray-400">
-                        +{inv.areasOfFocus.length - 4} more
-                      </span>
-                    )}
-                  </div>
+                <td className="px-3 py-3">
+                  <WhyFitCell bullets={inv.whyFit} />
+                </td>
+                <td className="px-3 py-3">
+                  <EvidenceLinks links={inv.evidenceLinks} />
                 </td>
                 <td className="px-3 py-3 max-w-[200px]">
                   {inv.relevantPortfolioCompanies.length > 0 ? (

@@ -1,4 +1,5 @@
 """POST /api/find-investors — SSE streaming endpoint."""
+import asyncio
 import json
 import logging
 from typing import AsyncGenerator
@@ -6,10 +7,9 @@ from typing import AsyncGenerator
 from fastapi import APIRouter, File, Form, UploadFile
 from fastapi.responses import StreamingResponse
 
-from app.cache.investor_cache import get_public_investors
 from app.models.request import FindInvestorsRequest
 from app.models.investor import InvestorRecord
-from app.services import deduplicator, scorer, spreadsheet_parser
+from app.services import scorer, spreadsheet_parser
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -21,6 +21,15 @@ def _sse(payload: dict) -> str:
 
 def _progress(step_id: str, label: str, status: str) -> str:
     return _sse({"type": "progress", "step": {"id": step_id, "label": label, "status": status}})
+
+
+STEP_LABELS: dict[str, str] = {
+    "conflicts": "Researching competitor conflicts...",
+    "generate": "Generating investor longlist with AI...",
+    "enrich": "Enriching & scoring investor profiles...",
+    "gap": "Checking for gaps (ensuring 80+ results)...",
+    "rank": "Ranking & tiering results...",
+}
 
 
 def _serialize(inv: InvestorRecord, rank: int) -> dict:
@@ -40,18 +49,24 @@ def _serialize(inv: InvestorRecord, rank: int) -> dict:
         "id": inv.id,
         "rank": rank,
         "fitScore": inv.fit_score or 0,
+        "prestigeScore": inv.prestige_score or 0,
+        "tier": inv.tier or 3,
         "fundName": inv.fund_name,
         "targetPartner": inv.target_partner,
+        "partnerTitle": inv.partner_title,
         "fundSize": fund_size,
         "checkSize": check_size,
         "leadOrFollow": inv.lead_or_follow,
         "areasOfFocus": inv.areas_of_focus,
         "relevantPortfolioCompanies": inv.relevant_portfolio,
+        "whyFit": inv.why_fit,
+        "evidenceLinks": inv.evidence_links,
         "hasCompetitorConflict": inv.has_competitor_conflict,
         "conflictingCompetitors": inv.conflicting_competitors,
         "website": inv.website,
         "linkedinUrl": inv.linkedin_url,
         "geography": inv.geography,
+        "notes": inv.notes,
         "source": inv.source,
     }
 
@@ -63,61 +78,101 @@ async def find_investors(
 ):
     request = FindInvestorsRequest.model_validate_json(data)
 
+    # Parse uploaded spreadsheet before streaming (needs to be read before async gen)
+    upload_investors: list[InvestorRecord] = []
+    if file and file.filename:
+        try:
+            content = await file.read()
+            upload_investors = spreadsheet_parser.parse_spreadsheet(content, file.filename)
+            logger.info(f"Parsed {len(upload_investors)} investors from uploaded spreadsheet")
+        except Exception as e:
+            logger.error(f"Spreadsheet parse error: {e}")
+
+    # Merge upload investors into request context via a side-channel
+    # (scorer pipeline handles public Excel; upload_investors are injected separately)
     async def event_stream() -> AsyncGenerator[str, None]:
-        # Step 1: Load public investors
-        yield _progress("load", "Loading investor database", "active")
-        public_investors = get_public_investors()
-        yield _progress("load", "Loading investor database", "complete")
+        # Emit all step IDs as pending initially
+        for step_id, label in STEP_LABELS.items():
+            yield _progress(step_id, label, "pending")
 
-        # Step 2: Parse uploaded spreadsheet
-        upload_investors: list[InvestorRecord] = []
-        if file and file.filename:
-            yield _progress("upload", "Processing your spreadsheet", "active")
-            try:
-                content = await file.read()
-                upload_investors = spreadsheet_parser.parse_spreadsheet(
-                    content, file.filename
-                )
-            except Exception as e:
-                logger.error(f"Spreadsheet parse error: {e}")
-            yield _progress("upload", "Processing your spreadsheet", "complete")
-        else:
-            yield _progress("upload", "No spreadsheet provided — skipping", "complete")
-
-        # Step 3: Merge + deduplicate
-        yield _progress("merge", "Merging & deduplicating records", "active")
-        all_investors = deduplicator.deduplicate(public_investors + upload_investors)
-        logger.info(f"Total unique investors after dedup: {len(all_investors)}")
-        yield _progress("merge", f"Merged {len(all_investors)} unique investors", "complete")
-
-        # Step 4: Score with Claude
-        yield _progress("score", "Scoring investors with AI (this takes ~30s)", "active")
-        scored_investors: list[InvestorRecord] = []
-        last_progress_msg = ""
+        # Queue for progress messages from the pipeline
+        progress_queue: asyncio.Queue[str] = asyncio.Queue()
+        current_step = {"id": "conflicts"}
 
         async def on_progress(msg: str) -> None:
-            nonlocal last_progress_msg
-            last_progress_msg = msg
-            # We can't yield from a callback, so just log
-            logger.info(f"Scoring progress: {msg}")
+            await progress_queue.put(msg)
 
-        try:
-            scored_investors = await scorer.run_scoring_pipeline(
-                all_investors, request, on_progress
-            )
-        except Exception as e:
-            logger.error(f"Scoring pipeline failed: {e}")
-            yield _sse({"type": "error", "message": f"Scoring failed: {str(e)}"})
+        # Map phase keywords → step IDs
+        PHASE_STEP = {
+            "conflicts": "conflicts",
+            "generate": "generate",
+            "enrich": "enrich",
+            "gap": "gap",
+            "rank": "rank",
+        }
+
+        # Mark conflicts as active
+        yield _progress("conflicts", STEP_LABELS["conflicts"], "active")
+        current_step["id"] = "conflicts"
+
+        # Run the pipeline as a background task so we can interleave SSE events
+        pipeline_task = asyncio.create_task(
+            scorer.run_dynamic_pipeline(request, on_progress)
+        )
+
+        last_step = "conflicts"
+        result_investors: list[InvestorRecord] = []
+
+        while not pipeline_task.done():
+            try:
+                msg = await asyncio.wait_for(progress_queue.get(), timeout=1.0)
+                # msg is either a phase keyword or an enrichment progress string
+                if msg in PHASE_STEP:
+                    new_step = PHASE_STEP[msg]
+                    if new_step != last_step:
+                        yield _progress(last_step, STEP_LABELS[last_step], "complete")
+                        yield _progress(new_step, STEP_LABELS[new_step], "active")
+                        last_step = new_step
+                else:
+                    # Enrichment progress update — send as SSE info
+                    yield _sse({"type": "info", "message": msg})
+            except asyncio.TimeoutError:
+                continue
+
+        # Drain remaining queue items
+        while not progress_queue.empty():
+            msg = progress_queue.get_nowait()
+            if msg in PHASE_STEP:
+                new_step = PHASE_STEP[msg]
+                if new_step != last_step:
+                    yield _progress(last_step, STEP_LABELS[last_step], "complete")
+                    yield _progress(new_step, STEP_LABELS[new_step], "active")
+                    last_step = new_step
+
+        # Handle pipeline result or exception
+        exc = pipeline_task.exception()
+        if exc:
+            logger.error(f"Pipeline failed: {exc}")
+            yield _progress(last_step, STEP_LABELS[last_step], "error")
+            yield _sse({"type": "error", "message": str(exc)})
             return
 
-        yield _progress("score", "Scoring investors with AI", "complete")
+        result_investors = pipeline_task.result()
 
-        # Step 5: Rank and return
-        yield _progress("rank", "Ranking results", "active")
-        top_100 = sorted(scored_investors, key=lambda x: -(x.fit_score or 0))[:100]
-        yield _progress("rank", f"Found {len(top_100)} investors", "complete")
+        # If there were uploaded investors, merge + re-sort
+        if upload_investors:
+            from app.services.deduplicator import deduplicate as _dedup
+            combined = _dedup(result_investors + upload_investors)
+            # Re-apply tier sort (uploaded investors won't have scores, put at end)
+            result_investors = scorer.sort_by_tier_and_score(combined)[:100]
 
-        output = [_serialize(inv, rank + 1) for rank, inv in enumerate(top_100)]
+        # Mark remaining steps complete
+        yield _progress(last_step, STEP_LABELS[last_step], "complete")
+        yield _progress("rank", STEP_LABELS["rank"], "active")
+
+        output = [_serialize(inv, rank + 1) for rank, inv in enumerate(result_investors)]
+
+        yield _progress("rank", f"Found {len(output)} investors", "complete")
         yield _sse({"type": "result", "investors": output, "total": len(output)})
 
     return StreamingResponse(

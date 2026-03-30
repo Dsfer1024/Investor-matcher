@@ -2,18 +2,24 @@ export interface Investor {
   id: string;
   rank: number;
   fitScore: number;
+  prestigeScore: number;
+  tier: 1 | 2 | 3;
   fundName: string;
   targetPartner: string | null;
+  partnerTitle: string | null;
   fundSize: string | null;
   checkSize: string | null;
   leadOrFollow: string | null;
   areasOfFocus: string[];
   relevantPortfolioCompanies: string[];
+  whyFit: string[];
+  evidenceLinks: string[];
   hasCompetitorConflict: boolean;
   conflictingCompetitors: string[];
   website: string | null;
   linkedinUrl: string | null;
   geography: string | null;
+  notes: string | null;
   source: string;
 }
 

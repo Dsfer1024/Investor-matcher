@@ -192,10 +192,15 @@ export default function InputForm({ onSubmit, loading }: Props) {
       />
 
       {/* File Upload */}
-      <FileUpload
-        file={form.spreadsheetFile}
-        onChange={(f) => set("spreadsheetFile", f)}
-      />
+      <div>
+        <FileUpload
+          file={form.spreadsheetFile}
+          onChange={(f) => set("spreadsheetFile", f)}
+        />
+        <p className="text-xs text-gray-400 mt-1.5">
+          AI generates investors automatically. Your spreadsheet adds extra candidates.
+        </p>
+      </div>
 
       {/* Submit */}
       <button

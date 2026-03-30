@@ -1,11 +1,11 @@
 import type { ProgressStep } from "../../types/investor";
 
 const STEPS: { id: string; label: string }[] = [
-  { id: "load", label: "Loading investor database" },
-  { id: "upload", label: "Processing your spreadsheet" },
-  { id: "merge", label: "Merging & deduplicating records" },
-  { id: "score", label: "Scoring investors with AI" },
-  { id: "rank", label: "Ranking results" },
+  { id: "conflicts", label: "Researching competitor conflicts..." },
+  { id: "generate", label: "Generating investor longlist with AI..." },
+  { id: "enrich", label: "Enriching & scoring investor profiles..." },
+  { id: "gap", label: "Checking for gaps (ensuring 80+ results)..." },
+  { id: "rank", label: "Ranking & tiering results..." },
 ];
 
 interface Props {
@@ -86,7 +86,7 @@ export default function LoadingProgress({ steps }: Props) {
         })}
       </div>
       <p className="text-xs text-gray-400 mt-4">
-        AI scoring typically takes 30–45 seconds
+        AI research typically takes 60–75 seconds
       </p>
     </div>
   );

@@ -3,13 +3,13 @@ import type { Investor } from "../types/investor";
 
 type SortKey = keyof Pick<
   Investor,
-  "rank" | "fitScore" | "fundName" | "fundSize" | "checkSize"
+  "rank" | "fitScore" | "prestigeScore" | "tier" | "fundName" | "fundSize" | "checkSize"
 >;
 
 type Direction = "asc" | "desc";
 
 export function useTableSort(investors: Investor[]) {
-  const [sortKey, setSortKey] = useState<SortKey>("rank");
+  const [sortKey, setSortKey] = useState<SortKey>("tier");
   const [direction, setDirection] = useState<Direction>("asc");
 
   const sorted = useMemo(() => {

@@ -42,4 +42,5 @@ app.include_router(investors.router, prefix="/api")
 @app.get("/health")
 async def health():
     from app.cache.investor_cache import get_public_investors
-    return {"status": "ok", "investors_loaded": len(get_public_investors())}
+    supplement_count = len(get_public_investors())
+    return {"status": "ok", "excel_supplement_count": supplement_count, "mode": "dynamic_ai"}

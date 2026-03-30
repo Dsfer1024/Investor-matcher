@@ -10,8 +10,15 @@ export async function findInvestors(
 ): Promise<void> {
   const { spreadsheetFile, ...rest } = formData;
 
+  // Convert empty numeric strings to null so pydantic doesn't fail
+  const payload = {
+    ...rest,
+    arr: rest.arr !== "" ? parseFloat(rest.arr) : null,
+    arrGrowth: rest.arrGrowth !== "" ? parseFloat(rest.arrGrowth) : null,
+  };
+
   const body = new FormData();
-  body.append("data", JSON.stringify(rest));
+  body.append("data", JSON.stringify(payload));
   if (spreadsheetFile) {
     body.append("file", spreadsheetFile);
   }
