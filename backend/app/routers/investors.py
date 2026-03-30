@@ -24,9 +24,7 @@ def _progress(step_id: str, label: str, status: str) -> str:
 
 
 STEP_LABELS: dict[str, str] = {
-    "conflicts": "Researching competitor conflicts...",
     "generate": "Generating & scoring investor list with AI...",
-    "gap": "Filling gaps to ensure 80+ results...",
     "rank": "Ranking & tiering results...",
 }
 
@@ -72,14 +70,12 @@ async def find_investors(
             await progress_queue.put(msg)
 
         PHASE_STEP = {
-            "conflicts": "conflicts",
             "generate": "generate",
-            "gap": "gap",
             "rank": "rank",
         }
 
-        yield _progress("conflicts", STEP_LABELS["conflicts"], "active")
-        last_step = "conflicts"
+        yield _progress("generate", STEP_LABELS["generate"], "active")
+        last_step = "generate"
 
         pipeline_task = asyncio.create_task(
             scorer.run_dynamic_pipeline(request, on_progress)
