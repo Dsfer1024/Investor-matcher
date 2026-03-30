@@ -186,7 +186,6 @@ export default function InputForm({ onSubmit, loading }: Props) {
             }`}
           />
           {errors.raiseAmount && <p className="text-xs text-red-500 mt-1">{errors.raiseAmount}</p>}
-          <p className="text-xs text-gray-400 mt-1">Only shows investors whose check starts at 30%+ of this</p>
         </div>
       </div>
 
