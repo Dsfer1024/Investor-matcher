@@ -11,7 +11,7 @@ export async function findInvestors(
   // Send snake_case keys to match Pydantic model field names
   const payload = {
     company_url: formData.companyUrl,
-    broad_industry: formData.broadIndustry,
+    industries: formData.industries,
     icp_segments: formData.icpSegments,
     arr: formData.arr !== "" ? parseFloat(formData.arr) : null,
     arr_growth: formData.arrGrowth !== "" ? parseFloat(formData.arrGrowth) : null,

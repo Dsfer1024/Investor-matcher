@@ -49,9 +49,33 @@ export const ROUND_STAGES = [
 
 export type RoundStage = (typeof ROUND_STAGES)[number];
 
+export const INDUSTRIES = [
+  "Construction Tech",
+  "Legal Tech",
+  "Logistics & Supply Chain",
+  "Real Estate Tech",
+  "HR Tech",
+  "EdTech",
+  "Retail Tech",
+  "Manufacturing Tech",
+  "Insurance Tech",
+  "Energy Tech",
+  "Government Tech",
+  "Agriculture Tech",
+  "Healthcare Tech",
+  "Financial Services",
+  "Media & Entertainment",
+  "Travel & Hospitality",
+  "Professional Services",
+  "Cybersecurity",
+  "Climate Tech",
+] as const;
+
+export type Industry = string; // string to allow custom entries
+
 export interface SearchFormData {
   companyUrl: string;
-  broadIndustry: string;
+  industries: Industry[];
   icpSegments: IcpSegment[];
   arr: string;
   arrGrowth: string;

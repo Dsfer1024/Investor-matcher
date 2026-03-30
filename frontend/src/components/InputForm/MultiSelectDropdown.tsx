@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, KeyboardEvent } from "react";
 
 interface Props {
   label: string;
@@ -8,6 +8,8 @@ interface Props {
   placeholder?: string;
   required?: boolean;
   error?: string;
+  allowCustom?: boolean;
+  customPlaceholder?: string;
 }
 
 export default function MultiSelectDropdown({
@@ -18,8 +20,12 @@ export default function MultiSelectDropdown({
   placeholder = "Select options...",
   required,
   error,
+  allowCustom = false,
+  customPlaceholder = "Type and press Enter to add...",
 }: Props) {
   const [open, setOpen] = useState(false);
+  const [customInput, setCustomInput] = useState("");
+  const [extraOptions, setExtraOptions] = useState<string[]>([]);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -39,6 +45,27 @@ export default function MultiSelectDropdown({
       onChange([...selected, option]);
     }
   }
+
+  function addCustom() {
+    const val = customInput.trim();
+    if (!val) return;
+    if (!selected.includes(val)) {
+      onChange([...selected, val]);
+    }
+    if (!options.includes(val) && !extraOptions.includes(val)) {
+      setExtraOptions((e) => [...e, val]);
+    }
+    setCustomInput("");
+  }
+
+  function handleCustomKey(e: KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      addCustom();
+    }
+  }
+
+  const allOptions = [...options, ...extraOptions];
 
   const displayText =
     selected.length === 0
@@ -65,7 +92,7 @@ export default function MultiSelectDropdown({
           {displayText}
         </span>
         <svg
-          className={`w-4 h-4 text-gray-400 transition-transform ${open ? "rotate-180" : ""}`}
+          className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -75,32 +102,50 @@ export default function MultiSelectDropdown({
       </button>
 
       {open && (
-        <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-          {options.map((option) => {
-            const checked = selected.includes(option);
-            return (
-              <label
-                key={option}
-                className="flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 cursor-pointer"
-              >
-                <input
-                  type="checkbox"
-                  checked={checked}
-                  onChange={() => toggle(option)}
-                  className="w-4 h-4 accent-blue-600 cursor-pointer"
-                />
-                <span className="text-sm text-gray-700">{option}</span>
-              </label>
-            );
-          })}
+        <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg">
+          <div className="max-h-52 overflow-y-auto">
+            {allOptions.map((option) => {
+              const checked = selected.includes(option);
+              return (
+                <label
+                  key={option}
+                  className="flex items-center gap-3 px-3 py-2 hover:bg-gray-50 cursor-pointer"
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => toggle(option)}
+                    className="w-4 h-4 accent-blue-600 cursor-pointer"
+                  />
+                  <span className="text-sm text-gray-700">{option}</span>
+                </label>
+              );
+            })}
+          </div>
+
+          {allowCustom && (
+            <div className="border-t border-gray-100 px-3 py-2">
+              <input
+                type="text"
+                value={customInput}
+                onChange={(e) => setCustomInput(e.target.value)}
+                onKeyDown={handleCustomKey}
+                placeholder={customPlaceholder}
+                className="w-full text-sm border border-gray-200 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500 placeholder-gray-400"
+              />
+            </div>
+          )}
+
           {selected.length > 0 && (
-            <button
-              type="button"
-              onClick={() => onChange([])}
-              className="w-full text-xs text-red-500 hover:text-red-700 py-2 border-t border-gray-100 text-center"
-            >
-              Clear all
-            </button>
+            <div className="border-t border-gray-100">
+              <button
+                type="button"
+                onClick={() => onChange([])}
+                className="w-full text-xs text-red-500 hover:text-red-700 py-1.5 text-center"
+              >
+                Clear all
+              </button>
+            </div>
           )}
         </div>
       )}

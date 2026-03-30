@@ -50,8 +50,8 @@ def _build_company_profile(request: FindInvestorsRequest) -> str:
     lines = []
     if request.company_url:
         lines.append(f"Company URL: {request.company_url}")
-    if request.broad_industry:
-        lines.append(f"Industry / Category: {request.broad_industry}")
+    if request.industries:
+        lines.append(f"Industry / Category: {', '.join(request.industries)}")
     if request.keywords:
         lines.append(f"Business Type(s) / Keywords: {', '.join(request.keywords)}")
     if request.icp_segments:
