@@ -6,10 +6,12 @@ import {
   KEYWORDS,
   ICP_SEGMENTS,
   ROUND_STAGES,
+  INVESTOR_TYPES,
   type SearchFormData,
   type Keyword,
   type IcpSegment,
   type RoundStage,
+  type InvestorType,
 } from "../../types/investor";
 
 interface Props {
@@ -26,9 +28,29 @@ const INITIAL: SearchFormData = {
   raiseAmount: "",
   keywords: [],
   roundStage: "",
+  investorTypes: [],
   furtherContext: "",
   competitors: [],
 };
+
+function isValidUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:";
+  } catch {
+    return false;
+  }
+}
+
+function validateUrl(value: string): string | null {
+  if (!value.startsWith("http://") && !value.startsWith("https://")) {
+    return `Must start with https:// — e.g. https://${value.replace(/^www\./, "")}`;
+  }
+  if (!isValidUrl(value)) {
+    return "Invalid URL format — please enter a valid web address";
+  }
+  return null;
+}
 
 export default function InputForm({ onSubmit, loading }: Props) {
   const [form, setForm] = useState<SearchFormData>(INITIAL);
@@ -41,15 +63,33 @@ export default function InputForm({ onSubmit, loading }: Props) {
 
   function validate(): boolean {
     const errs: typeof errors = {};
-    if (!form.companyUrl.trim()) errs.companyUrl = "Required";
+
+    if (!form.companyUrl.trim()) {
+      errs.companyUrl = "Required";
+    } else {
+      const urlErr = validateUrl(form.companyUrl.trim());
+      if (urlErr) errs.companyUrl = urlErr;
+    }
+
     if (form.industries.length === 0) errs.industries = "Select at least one industry";
     if (form.keywords.length === 0) errs.keywords = "Select at least one keyword";
     if (form.icpSegments.length === 0) errs.icpSegments = "Select at least one segment";
+    if (form.investorTypes.length === 0) errs.investorTypes = "Select at least one investor type";
     if (!form.arr.trim()) errs.arr = "Required";
     if (!form.arrGrowth.trim()) errs.arrGrowth = "Required";
     if (!form.raiseAmount.trim()) errs.raiseAmount = "Required";
     if (!form.roundStage) errs.roundStage = "Required";
     if (form.competitors.length === 0) errs.competitors = "Add at least one competitor URL";
+
+    // Validate any competitor URLs already in the list
+    for (const url of form.competitors) {
+      const err = validateUrl(url);
+      if (err) {
+        errs.competitors = `Invalid competitor URL "${url}" — ${err}`;
+        break;
+      }
+    }
+
     setErrors(errs);
     return Object.keys(errs).length === 0;
   }
@@ -68,12 +108,18 @@ export default function InputForm({ onSubmit, loading }: Props) {
           Company URL <span className="text-red-500">*</span>
         </label>
         <input
-          type="url"
+          type="text"
           value={form.companyUrl}
           onChange={(e) => set("companyUrl", e.target.value)}
+          onBlur={() => {
+            if (form.companyUrl.trim()) {
+              const err = validateUrl(form.companyUrl.trim());
+              if (err) setErrors((e) => ({ ...e, companyUrl: err }));
+            }
+          }}
           placeholder="https://yourcompany.com (must include https://)"
           className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-            errors.companyUrl ? "border-red-400" : "border-gray-300"
+            errors.companyUrl ? "border-red-400 bg-red-50" : "border-gray-300"
           }`}
         />
         {errors.companyUrl && <p className="text-xs text-red-500 mt-1">{errors.companyUrl}</p>}
@@ -122,7 +168,7 @@ export default function InputForm({ onSubmit, loading }: Props) {
             value={form.roundStage}
             onChange={(e) => set("roundStage", e.target.value as RoundStage)}
             className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white ${
-              errors.roundStage ? "border-red-400" : "border-gray-300"
+              errors.roundStage ? "border-red-400 bg-red-50" : "border-gray-300"
             }`}
           >
             <option value="">Select stage</option>
@@ -133,6 +179,17 @@ export default function InputForm({ onSubmit, loading }: Props) {
           {errors.roundStage && <p className="text-xs text-red-500 mt-1">{errors.roundStage}</p>}
         </div>
       </div>
+
+      {/* Investor Type */}
+      <MultiSelectDropdown
+        label="Investor Type"
+        options={INVESTOR_TYPES}
+        selected={form.investorTypes}
+        onChange={(v) => set("investorTypes", v as InvestorType[])}
+        placeholder="Select investor type(s)..."
+        required
+        error={errors.investorTypes}
+      />
 
       {/* ARR + ARR Growth + Desired Raise */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -148,7 +205,7 @@ export default function InputForm({ onSubmit, loading }: Props) {
             onChange={(e) => set("arr", e.target.value)}
             placeholder="e.g. 2.5"
             className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-              errors.arr ? "border-red-400" : "border-gray-300"
+              errors.arr ? "border-red-400 bg-red-50" : "border-gray-300"
             }`}
           />
           {errors.arr && <p className="text-xs text-red-500 mt-1">{errors.arr}</p>}
@@ -165,7 +222,7 @@ export default function InputForm({ onSubmit, loading }: Props) {
             onChange={(e) => set("arrGrowth", e.target.value)}
             placeholder="e.g. 150"
             className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-              errors.arrGrowth ? "border-red-400" : "border-gray-300"
+              errors.arrGrowth ? "border-red-400 bg-red-50" : "border-gray-300"
             }`}
           />
           {errors.arrGrowth && <p className="text-xs text-red-500 mt-1">{errors.arrGrowth}</p>}
@@ -182,7 +239,7 @@ export default function InputForm({ onSubmit, loading }: Props) {
             onChange={(e) => set("raiseAmount", e.target.value)}
             placeholder="e.g. 10"
             className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-              errors.raiseAmount ? "border-red-400" : "border-gray-300"
+              errors.raiseAmount ? "border-red-400 bg-red-50" : "border-gray-300"
             }`}
           />
           {errors.raiseAmount && <p className="text-xs text-red-500 mt-1">{errors.raiseAmount}</p>}
@@ -196,6 +253,7 @@ export default function InputForm({ onSubmit, loading }: Props) {
           placeholder="Paste a competitor URL (must include https://) and press Enter. Add as many as relevant."
           values={form.competitors}
           onChange={(v) => set("competitors", v)}
+          validate={validateUrl}
         />
         {errors.competitors && <p className="text-xs text-red-500 mt-1">{errors.competitors}</p>}
       </div>

@@ -11,6 +11,7 @@ class FindInvestorsRequest(BaseModel):
     raise_amount: Optional[float] = None   # desired raise in $M, e.g. 10.0 = $10M
     keywords: list[str] = Field(default_factory=list)
     round_stage: Optional[str] = None
+    investor_types: list[str] = Field(default_factory=list)  # VC, Growth Equity, Private Equity
     further_context: Optional[str] = None
     competitors: list[str] = Field(default_factory=list)
 

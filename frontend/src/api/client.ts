@@ -18,6 +18,7 @@ export async function findInvestors(
     raise_amount: formData.raiseAmount !== "" ? parseFloat(formData.raiseAmount) : null,
     keywords: formData.keywords,
     round_stage: formData.roundStage,
+    investor_types: formData.investorTypes,
     further_context: formData.furtherContext,
     competitors: formData.competitors,
   };

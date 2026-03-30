@@ -38,6 +38,17 @@ def _build_company_profile(request: FindInvestorsRequest) -> str:
         lines.append(f"ARR Growth YoY: {request.arr_growth}%")
     if request.round_stage:
         lines.append(f"Round Stage: {request.round_stage}")
+        # Expand bridge stages into investor targeting instructions
+        bridge_map = {
+            "Bridge (Seed-A)": "Bridge round between Seed and Series A — target investors who lead Seed, larger Seed, or small Series A rounds ($500K–$4M checks)",
+            "Bridge (A-B)": "Bridge round between Series A and B — target investors who lead large Seeds, Series As, or small Series Bs ($3M–$15M checks)",
+            "Bridge (B and Beyond)": "Bridge round B-stage and beyond — target investors who lead Series Bs, Cs, or Ds ($10M–$75M checks)",
+            "Majority Buyout": "Majority buyout — target ONLY PE funds, growth equity firms, or VCs that explicitly do majority ownership deals. Do NOT include minority-only VC funds.",
+        }
+        if request.round_stage in bridge_map:
+            lines.append(f"Stage Detail: {bridge_map[request.round_stage]}")
+    if request.investor_types:
+        lines.append(f"Investor Types Requested: {', '.join(request.investor_types)}")
     if request.raise_amount is not None:
         min_check = round(request.raise_amount * 0.30, 2)
         lines.append(f"Desired Raise: ${request.raise_amount}M")
@@ -119,13 +130,38 @@ def _build_prompt(profile: str, target: int) -> str:
         else ""
     )
 
-    return f"""You are a venture research analyst. Return a JSON list of {target} VC investors for the company below. Be concise — short field values only.
+    # Build investor type weighting rule
+    investor_types_str = next(
+        (line.split(": ", 1)[1] for line in profile.splitlines() if line.startswith("Investor Types Requested:")),
+        "",
+    )
+    types = [t.strip() for t in investor_types_str.split(",") if t.strip()]
+    has_vc = "VC" in types
+    has_ge = "Growth Equity" in types
+    has_pe = "Private Equity" in types
+
+    if has_vc and not has_ge and not has_pe:
+        investor_type_rule = "• Investor mix: 100% VC / venture capital firms ONLY. Do not include PE or growth equity funds."
+    elif has_vc and (has_ge or has_pe):
+        investor_type_rule = "• Investor mix: at least 80% must be VC / venture capital firms. Remainder can be minority growth equity if highly relevant. No majority-only PE unless stage is Majority Buyout."
+    elif not has_vc and (has_ge or has_pe):
+        parts = []
+        if has_ge:
+            parts.append("growth equity")
+        if has_pe:
+            parts.append("private equity")
+        investor_type_rule = f"• Investor mix: focus on {' and '.join(parts)} funds. No VC-only early-stage funds."
+    else:
+        investor_type_rule = ""
+
+    return f"""You are a venture research analyst. Return a JSON list of {target} investors for the company below. Be concise — short field values only.
 
 COMPANY
 {profile}
 Geo: North America (USA priority)
 Conflicts: Flag board seats in {competitors_str} — include but mark has_competitor_conflict=true
 {check_size_rule}
+{investor_type_rule}
 
 INVESTOR CRITERIA
 Stage: {round_stage} | Keywords: {keywords_str} | ICP: {icp_str}

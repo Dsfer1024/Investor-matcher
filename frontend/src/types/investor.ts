@@ -42,12 +42,19 @@ export type IcpSegment = (typeof ICP_SEGMENTS)[number];
 export const ROUND_STAGES = [
   "Pre-Seed",
   "Seed",
+  "Bridge (Seed-A)",
   "Series A",
+  "Bridge (A-B)",
   "Series B",
+  "Bridge (B and Beyond)",
   "Series C+",
+  "Majority Buyout",
 ] as const;
 
 export type RoundStage = (typeof ROUND_STAGES)[number];
+
+export const INVESTOR_TYPES = ["VC", "Growth Equity", "Private Equity"] as const;
+export type InvestorType = (typeof INVESTOR_TYPES)[number];
 
 export const INDUSTRIES = [
   "Construction Tech",
@@ -83,6 +90,7 @@ export interface SearchFormData {
   raiseAmount: string;
   keywords: Keyword[];
   roundStage: RoundStage | "";
+  investorTypes: InvestorType[];
   furtherContext: string;
   competitors: string[];
 }
