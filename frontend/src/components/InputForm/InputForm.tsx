@@ -166,7 +166,13 @@ export default function InputForm({ onSubmit, loading }: Props) {
           </label>
           <select
             value={form.roundStage}
-            onChange={(e) => set("roundStage", e.target.value as RoundStage)}
+            onChange={(e) => {
+              const stage = e.target.value as RoundStage;
+              set("roundStage", stage);
+              if (stage === "Majority Buyout") {
+                set("investorTypes", form.investorTypes.filter((t) => t !== "VC") as InvestorType[]);
+              }
+            }}
             className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white ${
               errors.roundStage ? "border-red-400 bg-red-50" : "border-gray-300"
             }`}
@@ -183,13 +189,20 @@ export default function InputForm({ onSubmit, loading }: Props) {
       {/* Investor Type */}
       <MultiSelectDropdown
         label="Investor Type"
-        options={INVESTOR_TYPES}
+        options={form.roundStage === "Majority Buyout"
+          ? INVESTOR_TYPES.filter((t) => t !== "VC")
+          : INVESTOR_TYPES}
         selected={form.investorTypes}
         onChange={(v) => set("investorTypes", v as InvestorType[])}
         placeholder="Select investor type(s)..."
         required
         error={errors.investorTypes}
       />
+      {form.roundStage === "Majority Buyout" && (
+        <p className="text-xs text-amber-600 -mt-3">
+          VC is not available for Majority Buyout — only Growth Equity and Private Equity apply.
+        </p>
+      )}
 
       {/* ARR + ARR Growth + Desired Raise */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
