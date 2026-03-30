@@ -1,13 +1,11 @@
-"""Fetch and cache public investor data from OpenVC and GitHub VC lists."""
-import csv
-import io
+"""Load investor data from the bundled Excel database."""
 import json
 import logging
 import re
 from datetime import datetime, timedelta
 from pathlib import Path
 
-import httpx
+import pandas as pd
 
 from app.config import get_settings
 from app.models.investor import DataSource, InvestorRecord
@@ -15,34 +13,211 @@ from app.models.investor import DataSource, InvestorRecord
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
+EXCEL_PATH = Path(__file__).parent.parent / "data" / "investor_list.xlsx"
+
+# Sheets to load and their primary stage label
+SHEET_STAGES = {
+    "Pre-seed": "Pre-Seed",
+    "Seed": "Seed",
+    "Series A": "Series A",
+    "Series B": "Series B",
+    "Growth Equity": "Growth Equity",
+    "Private Equity": "Private Equity",
+}
+
+# Adjacent stages added when Multi-stage == Y
+ADJACENT_STAGES = {
+    "Pre-Seed": ["Pre-Seed", "Seed"],
+    "Seed": ["Pre-Seed", "Seed", "Series A"],
+    "Series A": ["Seed", "Series A", "Series B"],
+    "Series B": ["Series A", "Series B", "Series C"],
+    "Growth Equity": ["Series B", "Series C", "Growth Equity"],
+    "Private Equity": ["Growth Equity", "Private Equity"],
+}
+
 
 def _slugify(text: str) -> str:
     return re.sub(r"[^a-z0-9]+", "_", text.lower()).strip("_")
 
 
-def _parse_comma_list(value: str) -> list[str]:
-    if not value:
-        return []
-    return [v.strip() for v in value.split(",") if v.strip()]
-
-
-def _parse_usd(value: str) -> int | None:
-    """Parse strings like '$200M', '200000000', '200m' into int USD."""
-    if not value:
+def _parse_usd(value) -> int | None:
+    if not value or (isinstance(value, float) and pd.isna(value)):
         return None
-    value = value.strip().upper().replace(",", "").replace("$", "")
+    text = str(value).strip().upper().replace(",", "").replace("$", "")
     multipliers = {"B": 1_000_000_000, "M": 1_000_000, "K": 1_000}
     for suffix, mult in multipliers.items():
-        if value.endswith(suffix):
+        if text.endswith(suffix):
             try:
-                return int(float(value[:-1]) * mult)
+                return int(float(text[:-1]) * mult)
             except ValueError:
                 return None
     try:
-        return int(float(value))
+        return int(float(text))
     except ValueError:
         return None
 
+
+def _parse_check_size(raw: str) -> tuple[int | None, int | None]:
+    """Parse '$500k–$2M' into (500000, 2000000)."""
+    if not raw:
+        return None, None
+    raw = str(raw)
+    # Split on em dash, en dash, or hyphen
+    parts = re.split(r"[–—\-]", raw)
+    if len(parts) == 2:
+        return _parse_usd(parts[0].strip()), _parse_usd(parts[1].strip())
+    single = _parse_usd(raw)
+    return single, single
+
+
+def _parse_list(value, sep=r"[;,]") -> list[str]:
+    if not value or (isinstance(value, float) and pd.isna(value)):
+        return []
+    return [v.strip() for v in re.split(sep, str(value)) if v.strip()]
+
+
+def _extract_url(value) -> str | None:
+    if not value or (isinstance(value, float) and pd.isna(value)):
+        return None
+    urls = re.findall(r"https?://[^\s,;]+", str(value))
+    return urls[0] if urls else None
+
+
+def _str_or_none(value) -> str | None:
+    if value is None or (isinstance(value, float) and pd.isna(value)):
+        return None
+    s = str(value).strip()
+    return s if s else None
+
+
+def _load_from_excel() -> list[InvestorRecord]:
+    if not EXCEL_PATH.exists():
+        logger.error(f"Investor Excel file not found at {EXCEL_PATH}")
+        return []
+
+    records: list[InvestorRecord] = []
+    seen_ids: set[str] = set()
+
+    for sheet_name, primary_stage in SHEET_STAGES.items():
+        try:
+            df = pd.read_excel(EXCEL_PATH, sheet_name=sheet_name)
+        except Exception as e:
+            logger.warning(f"Could not read sheet '{sheet_name}': {e}")
+            continue
+
+        # Normalize column names
+        df.columns = [str(c).strip() for c in df.columns]
+
+        # Find the actual column names (they may vary slightly)
+        col = {}
+        for c in df.columns:
+            cl = c.lower()
+            if "investor" in cl or "firm" in cl:
+                col["name"] = c
+            elif "category" in cl:
+                col["category"] = c
+            elif "multi" in cl and "stage" in cl:
+                col["multi_stage"] = c
+            elif "lead" in cl:
+                col["lead"] = c
+            elif "first check" in cl or ("check" in cl and "follow" not in cl):
+                col["check_size"] = c
+            elif "follow" in cl and "capacity" in cl:
+                col["followon"] = c
+            elif "thesis" in cl or "core" in cl:
+                col["thesis"] = c
+            elif "us invest" in cl or "investing focus" in cl:
+                col["geography"] = c
+            elif "recent" in cl or "deals" in cl:
+                col["portfolio"] = c
+            elif "founder profile" in cl or "best" in cl:
+                col["profile"] = c
+            elif "proof" in cl or "link" in cl:
+                col["links"] = c
+            elif "arr entry" in cl:
+                col["arr_entry"] = c
+            elif "growth equity band" in cl:
+                col["ge_band"] = c
+            elif "replaces" in cl:
+                col["replaces"] = c
+            elif "liquidity" in cl:
+                col["liquidity"] = c
+
+        for _, row in df.iterrows():
+            fund_name = _str_or_none(row.get(col.get("name", ""), None))
+            if not fund_name or fund_name.lower() in ("nan", "none", "investor / firm"):
+                continue
+
+            record_id = f"xl_{_slugify(fund_name)}_{_slugify(primary_stage)}"
+            # Skip exact duplicates within the same sheet
+            if record_id in seen_ids:
+                continue
+            seen_ids.add(record_id)
+
+            # Stages
+            multi = _str_or_none(row.get(col.get("multi_stage", ""), None))
+            if multi and multi.upper() == "Y":
+                stages = ADJACENT_STAGES.get(primary_stage, [primary_stage])
+            else:
+                stages = [primary_stage]
+
+            # Check size
+            check_raw = _str_or_none(row.get(col.get("check_size", ""), None))
+            check_min, check_max = _parse_check_size(check_raw or "")
+
+            # Thesis → areas_of_focus
+            thesis_raw = _str_or_none(row.get(col.get("thesis", ""), None))
+            areas = _parse_list(thesis_raw)
+
+            # Portfolio companies
+            portfolio_raw = _str_or_none(row.get(col.get("portfolio", ""), None))
+            portfolio = _parse_list(portfolio_raw)
+
+            # Website from proof links
+            links_raw = _str_or_none(row.get(col.get("links", ""), None))
+            website = _extract_url(links_raw)
+
+            # Lead/follow
+            lead_raw = _str_or_none(row.get(col.get("lead", ""), None))
+
+            # Geography
+            geo_raw = _str_or_none(row.get(col.get("geography", ""), None))
+
+            # Extra context fields for Claude
+            raw_data = {
+                "category": _str_or_none(row.get(col.get("category", ""), None)),
+                "best_fit_profile": _str_or_none(row.get(col.get("profile", ""), None)),
+                "followon_capacity": _str_or_none(row.get(col.get("followon", ""), None)),
+                "arr_entry_band": _str_or_none(row.get(col.get("arr_entry", ""), None)),
+                "growth_equity_band": _str_or_none(row.get(col.get("ge_band", ""), None)),
+                "replaces_series": _str_or_none(row.get(col.get("replaces", ""), None)),
+                "founder_liquidity": _str_or_none(row.get(col.get("liquidity", ""), None)),
+                "primary_stage": primary_stage,
+            }
+
+            records.append(
+                InvestorRecord(
+                    id=record_id,
+                    fund_name=fund_name,
+                    check_size_raw=check_raw,
+                    check_size_min_usd=check_min,
+                    check_size_max_usd=check_max,
+                    lead_or_follow=lead_raw,
+                    areas_of_focus=areas,
+                    stages_invested=stages,
+                    portfolio_companies=portfolio,
+                    website=website,
+                    geography=geo_raw,
+                    source=DataSource.user_upload,
+                    raw_data=raw_data,
+                )
+            )
+
+    logger.info(f"Loaded {len(records)} investors from Excel database")
+    return records
+
+
+# ─── Cache layer ────────────────────────────────────────────────────────────
 
 def _cache_path() -> Path:
     return Path(settings.data_cache_dir) / "public_investors_cache.json"
@@ -82,107 +257,13 @@ def _save_to_cache(records: list[InvestorRecord]) -> None:
         logger.warning(f"Cache write failed: {e}")
 
 
-async def _fetch_openvc() -> list[InvestorRecord]:
-    records = []
-    try:
-        async with httpx.AsyncClient(timeout=30) as client:
-            resp = await client.get(settings.openvc_csv_url)
-            resp.raise_for_status()
-        reader = csv.DictReader(io.StringIO(resp.text))
-        for row in reader:
-            fund_name = (row.get("Fund Name") or row.get("fund_name") or "").strip()
-            if not fund_name:
-                continue
-            records.append(
-                InvestorRecord(
-                    id=f"openvc_{_slugify(fund_name)}",
-                    fund_name=fund_name,
-                    target_partner=row.get("Partner Name") or row.get("partner_name"),
-                    website=row.get("Website") or row.get("website"),
-                    areas_of_focus=_parse_comma_list(
-                        row.get("Focus Areas") or row.get("focus_areas") or ""
-                    ),
-                    stages_invested=_parse_comma_list(
-                        row.get("Stages") or row.get("stages") or ""
-                    ),
-                    check_size_raw=row.get("Check Size") or row.get("check_size"),
-                    fund_size_raw=row.get("Fund Size") or row.get("fund_size"),
-                    fund_size_usd=_parse_usd(
-                        row.get("Fund Size") or row.get("fund_size") or ""
-                    ),
-                    geography=row.get("Geography") or row.get("geography"),
-                    portfolio_companies=_parse_comma_list(
-                        row.get("Portfolio") or row.get("portfolio_companies") or ""
-                    ),
-                    lead_or_follow=row.get("Lead or Follow") or row.get("lead_or_follow"),
-                    source=DataSource.openvc,
-                    raw_data=dict(row),
-                )
-            )
-    except Exception as e:
-        logger.warning(f"OpenVC fetch failed: {e}")
-    logger.info(f"Loaded {len(records)} records from OpenVC")
-    return records
-
-
-async def _fetch_github_lists() -> list[InvestorRecord]:
-    records = []
-    async with httpx.AsyncClient(timeout=30) as client:
-        for url in settings.github_vc_list_urls:
-            try:
-                resp = await client.get(url)
-                resp.raise_for_status()
-                data = resp.json()
-                # Handle both list-of-dicts and dict-with-list shapes
-                items = data if isinstance(data, list) else data.get("vcs", data.get("investors", []))
-                for item in items:
-                    if not isinstance(item, dict):
-                        continue
-                    fund_name = (
-                        item.get("name") or item.get("fund_name") or item.get("firm") or ""
-                    ).strip()
-                    if not fund_name:
-                        continue
-                    records.append(
-                        InvestorRecord(
-                            id=f"gh_{_slugify(fund_name)}",
-                            fund_name=fund_name,
-                            target_partner=item.get("partner") or item.get("partner_name"),
-                            website=item.get("website") or item.get("url"),
-                            areas_of_focus=_parse_comma_list(
-                                item.get("focus") or item.get("sectors") or ""
-                            )
-                            if isinstance(item.get("focus") or item.get("sectors"), str)
-                            else (item.get("focus") or item.get("sectors") or []),
-                            stages_invested=_parse_comma_list(
-                                item.get("stages") or ""
-                            )
-                            if isinstance(item.get("stages"), str)
-                            else (item.get("stages") or []),
-                            geography=item.get("geography") or item.get("location"),
-                            fund_size_raw=str(item.get("fund_size") or ""),
-                            fund_size_usd=_parse_usd(str(item.get("fund_size") or "")),
-                            check_size_raw=item.get("check_size"),
-                            source=DataSource.github,
-                            raw_data=item,
-                        )
-                    )
-            except Exception as e:
-                logger.warning(f"GitHub VC list fetch failed ({url}): {e}")
-    logger.info(f"Loaded {len(records)} records from GitHub lists")
-    return records
-
-
 async def load_public_investors() -> list[InvestorRecord]:
-    """Returns merged public investor list, using disk cache if fresh."""
+    """Returns investor list from Excel, using disk cache if fresh."""
     cached = _load_from_cache()
     if cached:
         logger.info(f"Loaded {len(cached)} investors from cache")
         return cached
 
-    openvc = await _fetch_openvc()
-    github = await _fetch_github_lists()
-    all_records = openvc + github
-    _save_to_cache(all_records)
-    logger.info(f"Fetched {len(all_records)} total public investors")
-    return all_records
+    records = _load_from_excel()
+    _save_to_cache(records)
+    return records

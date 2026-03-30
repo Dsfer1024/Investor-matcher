@@ -59,7 +59,20 @@ def _build_investor_list(investors: list[InvestorRecord]) -> str:
         fund_size = inv.fund_size_raw or (
             f"${inv.fund_size_usd // 1_000_000}M" if inv.fund_size_usd else "Unknown"
         )
-        items.append(
+
+        # Extra context from Excel fields
+        rd = inv.raw_data or {}
+        extra_lines = []
+        if rd.get("best_fit_profile"):
+            extra_lines.append(f"  Best-fit Founder: {rd['best_fit_profile']}")
+        if rd.get("arr_entry_band"):
+            extra_lines.append(f"  ARR Entry Band: {rd['arr_entry_band']}")
+        if rd.get("followon_capacity"):
+            extra_lines.append(f"  Follow-on Capacity: {rd['followon_capacity']}")
+        if rd.get("category"):
+            extra_lines.append(f"  Category: {rd['category']}")
+
+        block = (
             f"ID: {inv.id}\n"
             f"  Fund: {inv.fund_name}\n"
             f"  Focus: {focus}\n"
@@ -68,6 +81,9 @@ def _build_investor_list(investors: list[InvestorRecord]) -> str:
             f"  Fund Size: {fund_size}\n"
             f"  Portfolio: {portfolio}"
         )
+        if extra_lines:
+            block += "\n" + "\n".join(extra_lines)
+        items.append(block)
     return "\n\n".join(items)
 
 
