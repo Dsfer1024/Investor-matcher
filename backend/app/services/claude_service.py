@@ -119,53 +119,33 @@ def _build_prompt(profile: str, target: int) -> str:
         else ""
     )
 
-    return f"""You are a meticulous venture research analyst. Create an ACCURATE, citation-backed list of {target} investor VC firms for the company below.
+    return f"""You are a venture research analyst. Return a JSON list of {target} VC investors for the company below. Be concise — short field values only.
 
-ABOUT THE COMPANY
+COMPANY
 {profile}
-• Geo preference: North America (prioritize USA)
-• Conflicts: Flag firms with active board seats in: {competitors_str} — include but flag
-
-TARGET INVESTOR PROFILE
-• Stage: {round_stage}
-• Keywords / Themes: {keywords_str}
-• ICP / Buyer: {icp_str} customer segments
-• Geography: Prioritize North America
+Geo: North America (USA priority)
+Conflicts: Flag board seats in {competitors_str} — include but mark has_competitor_conflict=true
 {check_size_rule}
 
-SCORING & TIERS
-PrestigeScore (0–100): Outcomes/Brand (30pts) + Lead Velocity (25pts) + Platform Strength (15pts) + Cross-Cycle Conviction (15pts) + Peer Signaling (15pts)
-FitScore (0–100): Sector Relevance (35pts) + Thesis Fit (35pts) + Geo/Stage Match (15pts) + Conflict Risk (15pts — penalize active competitor boards)
-Tier 1 = PrestigeScore 80–100 | Tier 2 = 60–79 | Tier 3 = 40–59
+INVESTOR CRITERIA
+Stage: {round_stage} | Keywords: {keywords_str} | ICP: {icp_str}
 
-OUTPUT FORMAT
-First write one paragraph labeled "QUICK THESIS:" summarizing the company, ideal investor profile, and what makes a perfect lead. 3–4 sentences.
+SCORING
+PrestigeScore (0-100): Brand/Outcomes 30 + Lead Velocity 25 + Platform 15 + Cross-Cycle 15 + Peer Signal 15
+FitScore (0-100): Sector Fit 35 + Thesis 35 + Geo/Stage 15 + Conflict Risk 15
+Tier 1=80-100 Tier 2=60-79 Tier 3=40-59
 
-Then output a valid JSON array of exactly {target} objects (no markdown fences):
-[{{
-  "tier": 1,
-  "prestige_score": 85,
-  "fit_score": 90,
-  "firm": "Exact Fund Name",
-  "recommended_partner": "Partner Name",
-  "partner_title": "General Partner",
-  "firm_url": "https://...",
-  "partner_linkedin": "https://linkedin.com/in/...",
-  "geo_focus": "USA / North America",
-  "typical_lead_check_usd": "$2M–$5M",
-  "leads_round_frequently": "Yes",
-  "why_fit": ["Specific reason 1", "Specific reason 2"],
-  "relevant_past_investments": ["Company A (Series A, 2022)", "Company B (Seed, 2021)"],
-  "evidence_links": ["https://...", "https://..."],
-  "has_competitor_conflict": false,
-  "conflicting_competitors": [],
-  "notes": "One sentence of context"
-}}]"""
+OUTPUT: First write "QUICK THESIS:" paragraph (3 sentences max). Then a JSON array of exactly {target} objects. Keep every string value SHORT (firm names exact, why_fit max 2 bullets of ≤12 words each, notes ≤8 words, max 2 past investments, max 2 evidence links). No markdown fences.
+
+[{{"tier":1,"prestige_score":85,"fit_score":90,"firm":"Fund Name","recommended_partner":"Name","partner_title":"GP","firm_url":"https://...","partner_linkedin":"https://linkedin.com/in/...","geo_focus":"USA","typical_lead_check_usd":"$3M-$8M","leads_round_frequently":"Yes","why_fit":["Reason 1","Reason 2"],"relevant_past_investments":["Co A (2022)","Co B (2021)"],"evidence_links":["https://..."],"has_competitor_conflict":false,"conflicting_competitors":[],"notes":"Brief note"}}]
+
+Output all {target} objects now."""
 
 
 async def stream_investors(
     request: FindInvestorsRequest,
     target: int = 25,
+    exclude: set[str] | None = None,
 ) -> AsyncGenerator[tuple[str, Any], None]:
     """
     Async generator that streams investor data from Claude token-by-token.
@@ -191,7 +171,7 @@ async def stream_investors(
     try:
         async with client.messages.stream(
             model=settings.claude_model,
-            max_tokens=8000,
+            max_tokens=16000,
             messages=[{"role": "user", "content": prompt}],
         ) as stream:
             async for text_chunk in stream.text_stream:
@@ -239,6 +219,8 @@ async def stream_investors(
                                 data = json.loads(obj_json)
                                 record = _parse_record(data, seen_ids)
                                 if record:
+                                    if exclude and record.fund_name.lower() in exclude:
+                                        continue
                                     yield ("investor", record)
                             except json.JSONDecodeError:
                                 pass
